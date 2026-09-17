@@ -88,6 +88,24 @@ def _query_solana_rpc(method: str, params: list) -> dict:
     except Exception as e:
         return {"error": str(e)}
 
+def _query_evm_rpc(to_address: str, data: str, rpc_url: str = BASE_RPC_URL) -> dict:
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "eth_call",
+        "params": [{"to": to_address, "data": data}, "latest"]
+    }
+    req = urllib.request.Request(
+        rpc_url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"content-type": "application/json", "User-Agent": "mermail-bounty-mcp/3.0"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except Exception as e:
+        return {"error": str(e)}
+
 @mcp.tool()
 def mermail_get_wallet(explicit_wallet: str = None) -> str:
     """Return the active agent settlement wallet and supported settlement networks."""
@@ -169,6 +187,26 @@ def mermail_verify_escrow(escrow_address: str, expected_amount: float, chain: st
                     "native_sol_balance": sol_bal,
                     "action": "PROCEED_WITH_EXECUTION"
                 }, indent=2)
+
+    elif chain.lower() in ("base", "evm", "ethereum"):
+        clean_addr = escrow_address.lower().replace("0x", "").zfill(64)
+        data = "0x70a08231" + clean_addr
+        USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+        rpc_res = _query_evm_rpc(USDC_BASE, data)
+        if "result" in rpc_res and rpc_res["result"] != "0x":
+            try:
+                raw_bal = int(rpc_res["result"], 16)
+                bal = raw_bal / 1e6
+                if bal >= expected_amount:
+                    return json.dumps({
+                        "escrow_address": escrow_address,
+                        "chain": "base",
+                        "verified": True,
+                        "locked_usdc_balance": bal,
+                        "action": "PROCEED_WITH_EXECUTION"
+                    }, indent=2)
+            except Exception:
+                pass
 
     return json.dumps({
         "escrow_address": escrow_address,
