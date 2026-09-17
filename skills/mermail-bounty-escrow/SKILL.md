@@ -1,11 +1,11 @@
 ---
 name: mermail-bounty-escrow
-description: Audit on-chain counterparty escrow via public RPC, prevent unfunded agent compute, generate tamper-evident SHA-256 deliverable manifests, and dispatch verified milestone completion notices via Mermail. Use when verifying bounty deposits before running heavy GPU or code workloads, sealing SHA-256 deliverable manifests, and sending verified RFC delivery proofs through an agent mailbox.
+description: Audit on-chain counterparty escrow via public RPC, prevent unfunded agent compute, generate tamper-evident SHA-256 deliverable manifests, and dispatch verified milestone completion notices via Mermail. Operates natively via MCP OAuth in AI clients (Claude/Cursor) with zero keys, and supports MERMAIL_API_KEY for headless CLI automation.
 metadata:
   openclaw:
     requires:
       env:
-        - MERMAIL_API_KEY
+        - MERMAIL_API_KEY # Optional: for standalone CLI automation; interactive AI clients connect via zero-key MCP OAuth
     primaryEnv: MERMAIL_API_KEY
     homepage: https://docs.mermail.app/ai/skills
     emoji: "🛡️"

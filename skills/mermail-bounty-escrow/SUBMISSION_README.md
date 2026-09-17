@@ -63,7 +63,8 @@ The agent monitors its Mermail inbox for inbound RFPs, verifies on-chain counter
 ## 3. Key Capabilities & Features
 
 - **Autonomous Email Triaging:** Filters noise and identifies high-value bounty opportunities and milestones in real-time.
-- **Autonomous Treasury Armor:** Enforces a strict zero-unfunded-compute policy. If a client has not deposited milestone funds or signed token approvals, the agent gracefully responds with milestone terms rather than burning resources. Escrow is audited directly via public blockchain RPCs (`api.mainnet-beta.solana.com` or `mainnet.base.org`).
+- **Autonomous Treasury Armor (Hard Execution Gate):** Enforces a strict zero-unfunded-compute policy. If a client has not deposited milestone funds, the agent halts compute immediately. Escrow is audited directly via public blockchain RPCs (`api.mainnet-beta.solana.com` or `mainnet.base.org`).
+- **Programmatic Enforcement vs. Prompt Scaffolding:** Unlike skills that attempt to prevent unauthorized agent behavior through prompt-based prohibitions ("do not execute unvetted tasks")—which suffer from prohibition saturation and prompt injection—`mermail-bounty-escrow` moves the security boundary into **real programmatic Python RPC execution gates**. Compute is mathematically blocked until confirmed by public blockchain JSON-RPC.
 - **Tamper-Evident Delivery Manifests:** Traverses complex project directories (GLSL shaders, Three.js repos, compiled binaries) and generates an immutable composite root SHA-256 integrity hash proof.
 - **Dual Runtime Support:** Operates seamlessly with live `mermail-mcp`, direct Python FastMCP, and local CLI environments with dynamic wallet configuration (`--wallet`, `AGENT_WALLET_ADDRESS`).
 
@@ -186,7 +187,7 @@ python mermail_bounty_escrow.py --action dispatch --deal-id SUPERTEAM-MERMAIL-SK
 - **Target Repository:** [Nudgen-Marketing/mermail-skills](https://github.com/Nudgen-Marketing/mermail-skills)
 - **AI Client Used:** Gemini Pro / Antigravity Agent Runtime + FastMCP
 - **Demo Command:** `python mermail_bounty_escrow.py --action demo --target-dir .`
-- **Verification Hash:** [`DELIVERY_MANIFEST.json`](file:///skills/mermail-bounty-escrow/DELIVERY_MANIFEST.json) (Composite Root: `b9e1d13cd6b6e5adb1692ab70bca78fbe928795eb52a0720cc285553daf87d96`)
+- **Verification Hash:** [`DELIVERY_MANIFEST.json`](file:///skills/mermail-bounty-escrow/DELIVERY_MANIFEST.json) (Composite Root: `f709bfcd637bf21d48d73efe1979f0c2a0245473cec203a01d991ef7bad6566d`)
 - **Creator / Architect:** Apoorv A S ([@apoorv_xs](https://x.com/apoorv_xs))
 - **Settlement Wallet:** Dynamic (Configured via `--wallet` or `AGENT_WALLET_ADDRESS`)
 
