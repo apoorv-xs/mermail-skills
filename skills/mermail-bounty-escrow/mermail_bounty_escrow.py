@@ -483,8 +483,6 @@ def action_demo(target_dir: str, deal_id: str, escrow_address: str = None, amoun
     resolved_w = resolve_agent_wallet(wallet)
     print(BANNER.strip())
     print("\n>>> STEP 1: SCAN INCOMING BOUNTY RFPs VIA MERMAIL")
-    print(f"[+] Scanning Mermail Agent Inbox: {active_mb} ...")
-    
     # Query live gateway or show cleanly handled status
     inbox = action_scan(mailbox=active_mb)
     

@@ -88,38 +88,72 @@ python mermail_bounty_escrow.py --action demo
 ### Terminal Output Preview:
 ```text
 ================================================================================
-  MERMAIL BOUNTY ESCROW // AUTONOMOUS AGENT SETTLEMENT ENGINE
-  Protocol: Mermail Email Gateway + Dynamic Agent Wallet + On-chain RPC Escrow
+  MERMAIL BOUNTY ESCROW // AUTONOMOUS AGENT SETTLEMENT ENGINE (v3.0)
+  Protocol: Mermail Email Gateway + Dynamic Agent Wallet + On-Chain Escrow Audit
 ================================================================================
 
 >>> STEP 1: SCAN INCOMING BOUNTY RFPs VIA MERMAIL
-[+] Scanning Mermail Agent Inbox: agent@mermail.me ...
-[+] Retrieved inbound bounty & deal messages.
---------------------------------------------------------------------------------
-Message #1 | ID: MSG-9042 | [ESCROW FUNDED CANDIDATE]
-From:    bounties@superteam.fun
-Subject: AWARD NOTICE: Superteam Earn - Build and Demo a Mermail Agent Skill
-Reward:  $500.00 USDC
---------------------------------------------------------------------------------
 
->>> STEP 2: VERIFY SUPERTEAM EARN BOUNTY ESCROW VIA ON-CHAIN RPC
-[+] Verifying Counterparty Escrow for Deal: MSG-9042
-[*] Escrow Address: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
-[*] Querying Solana Public RPC (getTokenAccountBalance)...
-[OK] On-chain Escrow Verified: 500.00 USDC locked.
-[OK] Agent Execution Approved: Proceeding with deliverable compilation.
+[+] Scanning Mermail Agent Inbox: agent@mermail.me ...
+[*] Querying live hosted Mermail MCP gateway: https://console.mermail.app/mcp
+[!] Live Mermail API Response: HTTP Error 401: Unauthorized
+
+>>> STEP 2: VERIFY BOUNTY ESCROW VIA ON-CHAIN RPC
+
+[+] Auditing Counterparty On-Chain Escrow...
+[*] Target Escrow Address: 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
+[*] Expected Amount:       $500.00 USDC
+[*] Network:               SOLANA
+[*] Wallet Owner Verified USDC Balance across 1 ATA(s): $324.85 USDC
+[WARN] Escrow balance shortfall ($324.85 < $500.00).
+[TREASURY ARMOR] Halting compute until full milestone deposit is confirmed.
 
 >>> STEP 3: COMPILE TAMPER-EVIDENT MILESTONE MANIFEST
-[+] Compiling Immutable Milestone Deliverable Manifest
-[OK] Manifest generated: 10 files verified.
-[OK] Saved receipt manifest to: skills/mermail-bounty-escrow/DELIVERY_MANIFEST.json
 
->>> STEP 4: DISPATCH MERMAIL DELIVERY & ESCROW RELEASE NOTICE
-[+] Composing Delivery Email for Mermail Gateway
-[OK] Email accepted by Mermail Gateway: status=queued, id=msg_01J...
-[OK] 5-second undo grace window active until: 2026-09-18T03:45:00Z
+[+] Compiling Tamper-Evident Deliverable Manifest
+[*] Target Directory: .
+[*] Deal Reference:  SUPERTEAM-MERMAIL-500
+[OK] Manifest generated: 8 files verified.
+[OK] Composite Root SHA-256 Integrity Hash: ec9a34e4faa44af0d813a47ebf57c335e4f9aa524b23a85c9227d4a013b202b9
+[OK] Saved receipt manifest to: .\DELIVERY_MANIFEST.json
 
+>>> STEP 4: DISPATCH MERMAIL DELIVERY NOTICE (PREVIEW/DRY-RUN)
+
+[+] Composing Milestone Delivery Receipt for Mermail Gateway
+[*] Sender Mailbox: agent@mermail.me
+[*] Recipient:      bounties@superteam.fun
+[*] Deal:           SUPERTEAM-MERMAIL-500
+
+-------------------------- [GENERATED EMAIL PREVIEW] --------------------------
+Dear Sponsor / Client,
+
+Milestone Delivery for [SUPERTEAM-MERMAIL-500] has been finalized and compiled.
+
+PROVENANCE & INTEGRITY MANIFEST:
+--------------------------------------------------------------------------------
+Agent Mailbox Identity:   agent@mermail.me
+Agent Settlement Wallet:  WALLET_NOT_CONFIGURED
+Composite Root SHA-256:   ec9a34e4faa44af0d813a47ebf57c335e4f9aa524b23a85c9227d4a013b202b9
+Timestamp (UTC):          2026-09-17T23:02:05.327232+00:00
+Total Verified Files:     8
+--------------------------------------------------------------------------------
+
+DELIVERABLE ASSETS:
+The full source code, test suites, and documentation have been sealed.
+All individual file checksums match the attached DELIVERY_MANIFEST.json.
+
+ESCROW RELEASE REQUEST:
+Please confirm release of the milestone escrow balance to the Agent Wallet above.
+
+Respectfully,
+Autonomous Bounty Agent
+AI Engineering Agent
+--------------------------------------------------------------------------------
+[*] Dry run mode enabled. Email preview verified without dispatch.
+
+================================================================================
 [✔] COMPLETE AUTONOMOUS CYCLE EXECUTED WITH ZERO RUNTIME ERRORS.
+================================================================================
 ```
 
 ---
@@ -129,17 +163,17 @@ Reward:  $500.00 USDC
 You can also run each stage independently:
 
 ```bash
-# 1. Scan inbox for bounties (Live or Simulation)
-python mermail_bounty_escrow.py --action scan --live
+# 1. Scan inbox for bounties (Live or Reviewer Sample RFP)
+python mermail_bounty_escrow.py --action scan --sample-file sample_rfp.txt
 
-# 2. Verify escrow on a deal via public blockchain RPC
-python mermail_bounty_escrow.py --action verify --deal-id MSG-9042 --amount 500 --escrow-address EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v --chain solana
+# 2. Verify escrow on a deal via public blockchain RPC (Solana or Base)
+python mermail_bounty_escrow.py --action verify --deal-id MSG-9042 --amount 500 --escrow-address 0x3304E22DDaa22bCdC5fCa2269b418046aE7b566A --chain base
 
 # 3. Generate tamper-evident deliverable hash manifest
 python mermail_bounty_escrow.py --action deliver --target-dir . --deal-id SUPERTEAM-MERMAIL-SKILL-500
 
-# 4. Dispatch milestone completion email
-python mermail_bounty_escrow.py --action dispatch --deal-id SUPERTEAM-MERMAIL-SKILL-500 --recipient bounties@superteam.fun --live
+# 4. Dispatch milestone completion email (Dry-run preview or live gateway)
+python mermail_bounty_escrow.py --action dispatch --deal-id SUPERTEAM-MERMAIL-SKILL-500 --recipient bounties@superteam.fun --dry-run
 ```
 
 ---
@@ -150,7 +184,7 @@ python mermail_bounty_escrow.py --action dispatch --deal-id SUPERTEAM-MERMAIL-SK
 - **Target Repository:** [Nudgen-Marketing/mermail-skills](https://github.com/Nudgen-Marketing/mermail-skills)
 - **AI Client Used:** Gemini Pro / Antigravity Agent Runtime + FastMCP
 - **Demo Command:** `python mermail_bounty_escrow.py --action demo --target-dir .`
-- **Verification Hash:** [`DELIVERY_MANIFEST.json`](file:///skills/mermail-bounty-escrow/DELIVERY_MANIFEST.json) (Composite Root: `2350cf24ccd6e30dbd982f855325be982f577556897c55e4dab334d97be7f383`)
+- **Verification Hash:** [`DELIVERY_MANIFEST.json`](file:///skills/mermail-bounty-escrow/DELIVERY_MANIFEST.json) (Composite Root: `ec9a34e4faa44af0d813a47ebf57c335e4f9aa524b23a85c9227d4a013b202b9`)
 - **Creator / Architect:** Apoorv A S ([@apoorv_xs](https://x.com/apoorv_xs))
 - **Settlement Wallet:** Dynamic (Configured via `--wallet` or `AGENT_WALLET_ADDRESS`)
 
