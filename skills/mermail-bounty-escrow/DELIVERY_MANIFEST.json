@@ -1,18 +1,18 @@
 {
   "deal_id": "SUPERTEAM-MERMAIL-SKILL-500",
-  "timestamp_utc": "2026-09-17T22:28:35.314290+00:00",
-  "composite_sha256": "12576321a6e5c06c13abba40b9005b67e4d93f09c018ca97341b7900c7c47b29",
+  "timestamp_utc": "2026-09-17T22:39:16.629946+00:00",
+  "composite_sha256": "e05d23accce4f4f7cb0b98ddea0a8bf358f1f78063c265c66aca1dec3575ff7d",
   "agent_identity": "agent@mermail.me",
   "agent_wallet": "WALLET_NOT_CONFIGURED",
   "files_count": 8,
   "manifest": {
-    "SKILL.md": "14845dd18c46c5ec164ea92990f0520db22a2d9df6c1d857c566065551a1491f",
+    "SKILL.md": "eac7b5ecd01a674b1e6f802e1e2ee32cc72fbeab9d6c6ee77af2eca11044ca34",
     "live_mcp_client.py": "25b97c9adee40513dec5b4e94bc5af74e73bfcb7826952f718609aebe466c0b1",
     "mcp_server.py": "0969c496b136d1c0e21db678b39577d853238c2293c34b932014c9bb43e41235",
     "mermail_bounty_escrow.py": "ba5afdaae89236ff023d334ccdd02dbea34e0128ef78b204d21968311f297d53",
     "agents/openai.yaml": "322d9dc0cb75ed0a132235b59b4b1dc437965d1381cb4728bb023cb1be273552",
     "references/security.md": "c65b792c89d89e597588d2ea4be9678398d590744df930fde3e1db67efb0359d",
-    "references/tools.md": "6b0e209bbe394bc9633b9547ecdba6456bc0b6ad5bf136b2929b42f34c75531d",
-    "references/workflows.md": "ae9494f42ec6981c0b64da0e0d8e6ca347e170522c455cd5b5fb2865260082f5"
+    "references/tools.md": "150fd5556d17517c2224d908b352ce796db436fb658493398010665239657085",
+    "references/workflows.md": "22240196508f9d20391fe642bd7dd2483dce9373ebef18421fc3608ca43e6bba"
   }
 }
