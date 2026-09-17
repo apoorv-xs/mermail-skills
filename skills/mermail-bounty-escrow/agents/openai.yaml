@@ -1,0 +1,11 @@
+interface:
+  display_name: "Mermail Bounty Escrow"
+  short_description: "Audit counterparty escrow, prevent unfunded compute, and dispatch delivery receipts"
+  default_prompt: "Use $mermail-bounty-escrow to scan incoming bounty RFPs, audit on-chain counterparty escrow before compute, compile cryptographic delivery manifests, and dispatch milestone delivery receipts via Mermail email."
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "mermail"
+      description: "Mermail workspace and mailbox MCP server"
+      transport: "streamable_http"
+      url: "https://console.mermail.app/mcp"
