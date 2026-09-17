@@ -1,0 +1,25 @@
+{
+  "deal_id": "SUPERTEAM-MERMAIL-SKILL-500",
+  "timestamp_utc": "2026-09-17T19:23:16.791381+00:00",
+  "composite_sha256": "1b044e760c9d2af2b2a2d10d9ce1de3f6fac5cc2bd8299d564007f017bbdfea0",
+  "agent_identity": "ricksanchez@mermail.app",
+  "agent_wallet": "2PjfGyk1PcnXPj26BpaE4BicdbR5uGce9ULV7NMKpac9",
+  "files_count": 15,
+  "manifest": {
+    "DELIVERY_MANIFEST.json": "3f967ad50f171470f903bf16a8691679a8fbb278f9aefe1a274364087b76ea80",
+    "SKILL.md": "b51dd70c5897b88ad7376ceb9aae37cb835e5e06d9a3509470c89737a2d221db",
+    "SUBMISSION_README.md": "164489faa9b52e5c3b3835d74de96c8256a15cc8f24d142aa39cd38e32f3df7b",
+    "agent_demo.py": "5b9ace8b4ae2d72cc7c4d9663f735acfca03a9b6c1879e2df9dd0d439eb9df56",
+    "inspect_mermail.mjs": "0a95675b28019323bcb38e0dd79d8b4983761c5e5fb437015ae573650b755c96",
+    "list_mailboxes.mjs": "2af7f91a95d37bee907390f0d92078c3635d00b05c398a5f435fe86bee3071b8",
+    "live_mcp_client.py": "7e975e062b42ab06f42291fbf304f9770d8582d89565c0a555979b4b68963c12",
+    "live_production_demo.py": "e13e0423bdf74f274407542aaa4715215096cdd33cedd608848fc8351f844bb3",
+    "mcp_server.py": "59bdaf9e16a3aae46578d9753d96743b84833684bb154629c1a57dfd1eb8a46c",
+    "mermail_bounty_escrow.py": "3e96d24140fdcda3bb479b1285890030c112c3447b714e6c9f8c0fb4ce008ec5",
+    "mermail_live_bridge.py": "81a22e386c74bf7a0969944ffa3a499d7454704d6173120cc5641c901ac3e48f",
+    "read_live_emails.mjs": "c7327d92dc6d6ae48c78ef58a21e563d7641f6d272e62f65c9babce648a69444",
+    "references/security.md": "d5b20a7d08c8ad0ee12d3f2d4dae67889b46a25208c367153b993933045ee41e",
+    "references/tools.md": "23c3fffad796c5db393cce414ba3bac1a0d9ec56240b60f27bd91913a2388888",
+    "references/workflows.md": "fb738704a48d134fd5543bae6ca81573f45268234055c015096c75633a3e2648"
+  }
+}
