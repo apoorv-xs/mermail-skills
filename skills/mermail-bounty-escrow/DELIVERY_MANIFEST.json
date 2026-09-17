@@ -1,26 +1,26 @@
 {
   "deal_id": "SUPERTEAM-MERMAIL-SKILL-500",
-  "timestamp_utc": "2026-09-17T19:43:20.151058+00:00",
-  "composite_sha256": "f19c810bcb402a0adf6311e1bda3d12c02818293e104d3ea1ebf660f72cc3b22",
+  "timestamp_utc": "2026-09-17T22:14:56.335085+00:00",
+  "composite_sha256": "46de9c284d9b2b3e57c7eaced704e5e9cf14fc4d02223428e36b4831a835c7d5",
   "agent_identity": "ricksanchez@mermail.app",
   "agent_wallet": "2PjfGyk1PcnXPj26BpaE4BicdbR5uGce9ULV7NMKpac9",
   "files_count": 16,
   "manifest": {
-    "DELIVERY_MANIFEST.json": "106c024a46bee1f5ab49e4d896ded9decf751880402c4626689492d539fbd27f",
-    "SKILL.md": "05358b68eada4ee152411f866ed462b76a832178682d9577e4a418d5c0b1dfdd",
-    "SUBMISSION_README.md": "a4b38ef90cd23edf68cafade5bb34cd35725ce5bccdfb370f6029af15faf9916",
+    "DELIVERY_MANIFEST.json": "ed5bb5bfdc3093c63eb3bd709c75e4cf205d9f5e757d7a23708d7224c968a46f",
+    "SKILL.md": "14845dd18c46c5ec164ea92990f0520db22a2d9df6c1d857c566065551a1491f",
+    "SUBMISSION_README.md": "7e426826261ad4f51583cec8e8cc39cc51ed044453fe9322e4917548862efe22",
     "agent_demo.py": "eadfdf0ef59d64314233116e24e75c224a0a0a899b5fd2176be67e0f27f742c7",
     "inspect_mermail.mjs": "91f28532f7f9091a6555e35bd752c12d66099d5a9e1c67e37addcff1bbe4d0aa",
     "list_mailboxes.mjs": "2acba20d1703f6726bdff78956e0f95a4394476ae50be7d71547bf053fbb9442",
-    "live_mcp_client.py": "918c6da89874dd172ab9fc6521736ee3750f515658e171da6c87edf781040b3a",
+    "live_mcp_client.py": "46914964dd56ecfa26548e90355e58f84d0109eb1d0348487a5688ae083f494a",
     "live_production_demo.py": "bf1bf483a3747f14b351fd6d4efa56bcaed5d5fea409774ef2d304649125fffe",
-    "mcp_server.py": "97d969d16703362aaa044b2182ed7b78f850d8dae151650b56a81004e03a7ce3",
-    "mermail_bounty_escrow.py": "132be2f9317f708e215ad863f7fa8ef37e29866adaeab05e527b39c887780ee6",
+    "mcp_server.py": "0497484918ffd8d6cc87fdb659c73dbdf8d92a15e155cd397058e50da9a42b3d",
+    "mermail_bounty_escrow.py": "1aa8b042fa689320116f71153f1bf20ec5109a52d7953d0c68ab1f2fa4cd4b76",
     "mermail_live_bridge.py": "a7a8563b090088715dc110a6d5192e25507308fef80047a45c5eb2bfb67ed52a",
     "read_live_emails.mjs": "279cfe4b556464a40377f2750027a03d2526f9c55abc3918c82f47e917bb892d",
     "agents/openai.yaml": "322d9dc0cb75ed0a132235b59b4b1dc437965d1381cb4728bb023cb1be273552",
-    "references/security.md": "2d6316355cd45d428b95ffe5ec0020ecac2dd83d5a03147667c34678f4cf253f",
-    "references/tools.md": "91fac0452476a87840d9063eaf40df58fc4a63a2324c2745c1543232ef67d24c",
-    "references/workflows.md": "45b2c6fa1560a0d0f0534ae62eacfc20c756f44199a9f5efc82c09b789bc9d44"
+    "references/security.md": "c65b792c89d89e597588d2ea4be9678398d590744df930fde3e1db67efb0359d",
+    "references/tools.md": "7a127451c7c158591e7b1156c2dc9391d256545747beafa74eed4558d4a16d05",
+    "references/workflows.md": "ae9494f42ec6981c0b64da0e0d8e6ca347e170522c455cd5b5fb2865260082f5"
   }
 }

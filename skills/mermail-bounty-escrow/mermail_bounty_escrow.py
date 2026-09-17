@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 r"""
-MERMAIL BOUNTY ESCROW AGENT SKILL (v2.0 - Hybrid Production Ready)
-Autonomous bounty scanning, NLP deal extraction, counterparty wallet validation, 
-and cryptographic milestone delivery receipt engine.
-Integrates directly with live Mermail MCP Gateway & Agent Wallet.
+MERMAIL BOUNTY ESCROW AGENT SKILL (v3.0 - Verified Production Standard)
+Autonomous bounty email scanning, NLP extraction, real on-chain counterparty escrow verification,
+tamper-evident SHA-256 deliverable manifest generation, and authentic Mermail dispatch.
 
 Author: Apoorv A S (@apoorv-xs / @apoorv_xs)
-Workspace: B:\vault\mermail-skill\
+Workspace: B:\vault\mermail-skills-repo\skills\mermail-bounty-escrow\
 """
 
 import sys
@@ -27,8 +26,8 @@ if sys.platform == "win32":
 
 BANNER = """
 ================================================================================
-  MERMAIL BOUNTY ESCROW // AUTONOMOUS AGENT SETTLEMENT ENGINE (v2.0)
-  Protocol: Mermail Email Gateway + Agent Wallet + x402 Micro-Escrow
+  MERMAIL BOUNTY ESCROW // AUTONOMOUS AGENT SETTLEMENT ENGINE (v3.0)
+  Protocol: Mermail Email Gateway + Dynamic Agent Wallet + On-Chain Escrow Audit
   Architect: Apoorv A S (@apoorv_xs) | Portfolio: https://apoorv.qzz.io
 ================================================================================
 """
@@ -36,45 +35,22 @@ BANNER = """
 DEFAULT_ENDPOINT = "https://console.mermail.app/mcp"
 DEFAULT_API_KEY = os.environ.get("MERMAIL_API_KEY", "")
 DEFAULT_MAILBOX = "ricksanchez@mermail.app"
-AGENT_WALLET = "2PjfGyk1PcnXPj26BpaE4BicdbR5uGce9ULV7NMKpac9"
+SOLANA_RPC_URL = os.environ.get("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com")
+BASE_RPC_URL = os.environ.get("BASE_RPC_URL", "https://mainnet.base.org")
 
-MOCK_INBOX = [
-    {
-        "id": "MSG-9042",
-        "sender": "bounties@superteam.fun",
-        "subject": "AWARD NOTICE: Superteam Earn - Build and Demo a Mermail Agent Skill",
-        "date": "2026-09-17T10:15:00Z",
-        "body": """
-Hello Builder,
-You have an active bounty submission window for 'Build and Demo a Mermail Agent Skill'.
-Prize Pool: 500 USDC
-Escrow Contract: 0x94B0...e81A (Base / Solana SPL Supported)
-Milestone Requirement: Complete Agent Skill with functional CLI/MCP and video walkthrough.
-Please verify your Agent Wallet address and submit cryptographic delivery proof before deadline.
-        """,
-        "reward_usdc": 500.0,
-        "token": "USDC",
-        "escrow_verified": True
-    },
-    {
-        "id": "MSG-8819",
-        "sender": "founder@hyperion-compute.ai",
-        "subject": "Inquiry: 3D WebGPU Interactive Architecture Refactor",
-        "date": "2026-09-16T18:30:00Z",
-        "body": """
-Hi Apoorv,
-We reviewed your 60 FPS Trojan Horse diagnostic. Our current mobile frame rate is dropping to 22 FPS.
-We would like to move forward with the Phase 1 refactor ($9,250 upfront milestone deposit).
-Please send your SOW escrow address and milestone terms.
-        """,
-        "reward_usdc": 9250.0,
-        "token": "USDC",
-        "escrow_verified": False
-    }
-]
+def resolve_agent_wallet(explicit_wallet: str = None) -> str:
+    """Dynamically resolves agent settlement wallet from flag, env, or user setting."""
+    if explicit_wallet and explicit_wallet.strip():
+        return explicit_wallet.strip()
+    env_wallet = os.environ.get("AGENT_WALLET_ADDRESS", "").strip()
+    if env_wallet:
+        return env_wallet
+    # Fallback to public creative portfolio settlement wallet
+    return "2PjfGyk1PcnXPj26BpaE4BicdbR5uGce9ULV7NMKpac9"
 
-def query_live_mermail_mcp(tool_name: str, args: dict, endpoint: str = DEFAULT_ENDPOINT, api_key: str = DEFAULT_API_KEY):
+def query_live_mermail_mcp(tool_name: str, args: dict, endpoint: str = DEFAULT_ENDPOINT, api_key: str = None):
     """Executes a JSON-RPC tool call against the live hosted Mermail MCP gateway."""
+    key = api_key or os.environ.get("MERMAIL_API_KEY", "")
     req_body = {
         "jsonrpc": "2.0",
         "id": int(datetime.now().timestamp() * 1000) % 100000,
@@ -90,24 +66,61 @@ def query_live_mermail_mcp(tool_name: str, args: dict, endpoint: str = DEFAULT_E
         headers={
             "accept": "application/json, text/event-stream",
             "content-type": "application/json",
-            "x-api-key": api_key
+            "x-api-key": key
         }
     )
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=12) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             return data.get("result", {})
+    except Exception as e:
+        return {"error": str(e), "isError": True}
+
+def query_solana_rpc(method: str, params: list, rpc_url: str = SOLANA_RPC_URL) -> dict:
+    """Queries live Solana RPC node for on-chain state verification."""
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": method,
+        "params": params
+    }
+    req = urllib.request.Request(
+        rpc_url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"content-type": "application/json", "User-Agent": "mermail-bounty-escrow/3.0"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except Exception as e:
+        return {"error": str(e)}
+
+def query_evm_rpc(to_address: str, data: str, rpc_url: str = BASE_RPC_URL) -> dict:
+    """Queries live EVM/Base RPC node for contract state verification."""
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "eth_call",
+        "params": [{"to": to_address, "data": data}, "latest"]
+    }
+    req = urllib.request.Request(
+        rpc_url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"content-type": "application/json", "User-Agent": "mermail-bounty-escrow/3.0"}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return json.loads(resp.read().decode("utf-8"))
     except Exception as e:
         return {"error": str(e)}
 
 def parse_bounty_from_text(text: str, subject: str = "") -> dict:
-    """Intelligently extracts monetary rewards, tokens, and contract addresses from message bodies."""
+    """Extracts reward parameters, token types, and counterparty escrow addresses from message bodies."""
     combined = f"{subject}\n{text}"
     reward = 0.0
     token = "USDC"
     contract = None
 
-    # Search for dollar or USDC amounts
     usd_match = re.search(r'\$\s*([0-9,]+(?:\.[0-9]{2})?)', combined)
     usdc_match = re.search(r'([0-9,]+(?:\.[0-9]{2})?)\s*(?:USDC|SOL|USD)', combined, re.IGNORECASE)
     if usd_match:
@@ -115,21 +128,30 @@ def parse_bounty_from_text(text: str, subject: str = "") -> dict:
     elif usdc_match:
         reward = float(usdc_match.group(1).replace(",", ""))
 
-    # Search for contract / wallet addresses
-    contract_match = re.search(r'(0x[a-fA-F0-9]{4,40}\.\.\.[a-fA-F0-9]{4}|0x[a-fA-F0-9]{40}|[1-9A-HJ-NP-Za-km-z]{32,44})', combined)
-    if contract_match:
-        contract = contract_match.group(1)
+    # Detect Solana base58 or EVM hex addresses
+    evm_match = re.search(r'(0x[a-fA-F0-9]{40})', combined)
+    sol_match = re.search(r'\b([1-9A-HJ-NP-Za-km-z]{32,44})\b', combined)
+    
+    if evm_match:
+        contract = evm_match.group(1)
+        token = "USDC (Base/EVM)"
+    elif sol_match:
+        candidate = sol_match.group(1)
+        # Exclude common English false positives
+        if len(candidate) >= 32 and not candidate.lower().startswith("superteam"):
+            contract = candidate
+            token = "USDC (Solana SPL)"
 
-    has_escrow = bool(re.search(r'(escrow|locked|funded|approved|deposit confirmed)', combined, re.IGNORECASE))
+    has_escrow = bool(re.search(r'(escrow|locked|funded|deposit confirmed)', combined, re.IGNORECASE))
     return {
-        "reward_usdc": reward,
+        "reward_amount": reward,
         "token": token,
-        "contract": contract,
-        "escrow_verified": has_escrow
+        "escrow_address": contract,
+        "is_escrow_mentioned": has_escrow
     }
 
 def hash_directory(target_path: str) -> dict:
-    """Computes SHA-256 hashes for all files in target_path to build an immutable deliverable manifest."""
+    """Computes SHA-256 integrity checksums for all files in target_path to build a tamper-evident manifest."""
     manifest = {}
     if not os.path.exists(target_path):
         return {"error": f"Target path '{target_path}' not found."}
@@ -152,72 +174,135 @@ def hash_directory(target_path: str) -> dict:
                 manifest[rel_p] = f"Error reading file: {e}"
     return manifest
 
-def action_scan(live: bool = False, mailbox: str = DEFAULT_MAILBOX):
+def action_scan(mailbox: str = DEFAULT_MAILBOX, sample_file: str = None) -> list:
+    """Scans Mermail agent inbox for incoming bounty announcements and RFPs."""
     print(f"\n[+] Scanning Mermail Agent Inbox: {mailbox} ...")
-    print(f"[*] Gateway Mode: {'LIVE MERMAIL MCP CLOUD' if live else 'HYBRID LOCAL SIMULATION'}")
-    
     inbox = []
-    if live:
-        res = query_live_mermail_mcp("list_emails", {"mailboxId": mailbox})
-        if "error" in res:
-            print(f"[!] Live Mermail API Error: {res['error']}. Falling back to simulation mode.")
-            inbox = MOCK_INBOX
-        else:
-            items = res.get("structuredContent", {}).get("items", [])
-            for item in items:
-                parsed = parse_bounty_from_text(item.get("body", "") or item.get("snippet", ""), item.get("subject", ""))
-                inbox.append({
-                    "id": item.get("id", "LIVE-MSG"),
-                    "sender": item.get("sender", "unknown"),
-                    "subject": item.get("subject", "No subject"),
-                    "date": item.get("date", datetime.now(timezone.utc).isoformat()),
-                    "body": item.get("snippet", "") or item.get("body", ""),
-                    "reward_usdc": parsed["reward_usdc"],
-                    "token": parsed["token"],
-                    "escrow_verified": parsed["escrow_verified"],
-                    "contract": parsed["contract"]
-                })
-            if not inbox:
-                print("[*] Live inbox currently empty of bounty RFPs. Incorporating ecosystem pool...")
-                inbox = MOCK_INBOX
-    else:
-        inbox = MOCK_INBOX
 
-    print(f"[+] Retrieved {len(inbox)} inbound bounty & deal messages.\n")
-    
+    if sample_file and os.path.exists(sample_file):
+        print(f"[*] Ingesting reviewer test RFP payload: {sample_file}")
+        with open(sample_file, "r", encoding="utf-8") as f:
+            sample_content = f.read()
+        parsed = parse_bounty_from_text(sample_content, "TEST BOUNTY RFP")
+        inbox.append({
+            "id": "SAMPLE-RFP-001",
+            "sender": "sponsor@bounty-dao.org",
+            "subject": "TEST BOUNTY RFP: Build & Verify Agent Skill",
+            "date": datetime.now(timezone.utc).isoformat(),
+            "body": sample_content,
+            "reward_amount": parsed["reward_amount"],
+            "token": parsed["token"],
+            "escrow_address": parsed["escrow_address"]
+        })
+    else:
+        print(f"[*] Querying live hosted Mermail MCP gateway: {DEFAULT_ENDPOINT}")
+        res = query_live_mermail_mcp("list_emails", {"mailboxId": mailbox})
+        if "error" in res or res.get("isError"):
+            err_msg = res.get("error", "Unknown gateway error")
+            print(f"[!] Live Mermail API Response: {err_msg}")
+            return []
+        
+        items = res.get("structuredContent", {}).get("items", [])
+        for item in items:
+            body_text = item.get("body", "") or item.get("snippet", "")
+            parsed = parse_bounty_from_text(body_text, item.get("subject", ""))
+            # Flag messages that describe bounties, RFPs, or compensation
+            if parsed["reward_amount"] > 0 or parsed["is_escrow_mentioned"]:
+                inbox.append({
+                    "id": item.get("id"),
+                    "sender": item.get("sender"),
+                    "subject": item.get("subject"),
+                    "date": item.get("date"),
+                    "body": body_text,
+                    "reward_amount": parsed["reward_amount"],
+                    "token": parsed["token"],
+                    "escrow_address": parsed["escrow_address"]
+                })
+
+    if not inbox:
+        print("[*] Found 0 active bounty RFPs in the current inbox. Agent status: IDLE.")
+        return []
+
+    print(f"[+] Retrieved {len(inbox)} candidate bounty message(s):\n")
     for idx, msg in enumerate(inbox, 1):
-        status_tag = "[ESCROW FUNDED]" if msg["escrow_verified"] else "[UNFUNDED / SOW PENDING]"
         print(f"--------------------------------------------------------------------------------")
-        print(f"Message #{idx} | ID: {msg['id']} | {status_tag}")
-        print(f"From:    {msg['sender']}")
-        print(f"Subject: {msg['subject']}")
-        print(f"Reward:  ${msg['reward_usdc']:,.2f} {msg['token']}")
-        first_line = msg['body'].strip().splitlines()[0] if msg['body'].strip() else "No preview"
-        print(f"Summary: {first_line[:90]}")
+        print(f"Message #{idx} | ID: {msg['id']}")
+        print(f"From:     {msg['sender']}")
+        print(f"Subject:  {msg['subject']}")
+        print(f"Reward:   ${msg['reward_amount']:,.2f} {msg['token']}")
+        print(f"Escrow:   {msg['escrow_address'] or 'NOT STATED'}")
+        summary_line = msg['body'].strip().splitlines()[0] if msg['body'].strip() else "No body content"
+        print(f"Summary:  {summary_line[:90]}")
     print("--------------------------------------------------------------------------------\n")
     return inbox
 
-def action_verify(deal_id: str, expected_usdc: float):
-    print(f"\n[+] Verifying Counterparty Escrow for Deal: {deal_id}")
-    print(f"[*] Expected Milestone Amount: ${expected_usdc:,.2f} USDC")
-    
-    target_msg = next((m for m in MOCK_INBOX if deal_id.upper() in m["id"] or deal_id in m["subject"]), None)
-    
-    if target_msg and target_msg["escrow_verified"]:
-        print(f"[OK] On-chain Escrow Verified: ${expected_usdc:,.2f} USDC locked in contract 0x94B0...e81A")
-        print(f"[OK] Agent Execution Approved: Counterparty audit passed. Proceeding with deliverable compilation.")
-        return True
-    else:
-        print(f"[WARN] Escrow NOT confirmed on-chain or deposit pending.")
+def action_verify_escrow(escrow_address: str, expected_amount: float, chain: str = "solana") -> bool:
+    """Verifies counterparty escrow on-chain using public RPC nodes. Zero mock evaluation."""
+    print(f"\n[+] Auditing Counterparty On-Chain Escrow...")
+    print(f"[*] Target Escrow Address: {escrow_address}")
+    print(f"[*] Expected Amount:       ${expected_amount:,.2f} USDC")
+    print(f"[*] Network:               {chain.upper()}")
+
+    if not escrow_address or "..." in escrow_address or len(escrow_address) < 32:
+        print(f"[!] Invalid or abbreviated escrow address: '{escrow_address}'. Cannot verify on-chain.")
         print(f"[TREASURY ARMOR] HALTING UNCOMPENSATED COMPUTE.")
-        print(f"[+] Automated Action: Dispatched 50% Upfront Milestone SOW Link via Mermail.")
         return False
 
-def action_deliver(target_dir: str, deal_id: str):
-    print(f"\n[+] Compiling Immutable Milestone Deliverable Manifest")
+    if chain.lower() == "solana":
+        # Query Solana token account balance via public RPC
+        rpc_res = query_solana_rpc("getTokenAccountBalance", [escrow_address])
+        if "error" in rpc_res or "result" not in rpc_res:
+            print(f"[WARN] Solana RPC query returned: {rpc_res.get('error', 'Account not found or not an SPL token account')}")
+            # Check if it's a native SOL account
+            bal_res = query_solana_rpc("getBalance", [escrow_address])
+            if "result" in bal_res and "value" in bal_res["result"]:
+                sol_bal = bal_res["result"]["value"] / 1e9
+                print(f"[*] Account exists on-chain. Native SOL Balance: {sol_bal:.4f} SOL")
+                if sol_bal > 0:
+                    print(f"[OK] On-chain account active. Execution conditional approval granted.")
+                    return True
+            print(f"[TREASURY ARMOR] Escrow lock unconfirmed on-chain. Halting compute.")
+            return False
+        
+        token_amount = rpc_res["result"].get("value", {}).get("uiAmount", 0.0)
+        print(f"[*] On-Chain Verified Balance: ${token_amount:,.2f} USDC")
+        if token_amount >= expected_amount:
+            print(f"[OK] Escrow Verified on Solana Mainnet: ${token_amount:,.2f} locked.")
+            return True
+        else:
+            print(f"[WARN] Escrow balance shortfall (${token_amount:,.2f} < ${expected_amount:,.2f}).")
+            print(f"[TREASURY ARMOR] Halting compute until full milestone deposit is confirmed.")
+            return False
+
+    elif chain.lower() in ("base", "evm", "ethereum"):
+        # Query EVM balance via eth_call (standard ERC-20 balanceOf)
+        # Using zero-padded address for balanceOf(address)
+        clean_addr = escrow_address.lower().replace("0x", "").zfill(64)
+        data = "0x70a08231" + clean_addr
+        USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+        rpc_res = query_evm_rpc(USDC_BASE, data)
+        if "result" in rpc_res and rpc_res["result"] != "0x":
+            try:
+                raw_bal = int(rpc_res["result"], 16)
+                bal = raw_bal / 1e6
+                print(f"[*] On-Chain Verified Base USDC Balance: ${bal:,.2f}")
+                if bal >= expected_amount:
+                    print(f"[OK] Escrow Verified on Base Mainnet: ${bal:,.2f} locked.")
+                    return True
+            except Exception as e:
+                print(f"[!] Parsing Base RPC balance failed: {e}")
+        print(f"[TREASURY ARMOR] Escrow lock unconfirmed on Base. Halting compute.")
+        return False
+
+    return False
+
+def action_deliver(target_dir: str, deal_id: str, wallet: str = None) -> dict:
+    """Compiles an immutable SHA-256 deliverable integrity manifest."""
+    print(f"\n[+] Compiling Tamper-Evident Deliverable Manifest")
     print(f"[*] Target Directory: {target_dir}")
     print(f"[*] Deal Reference:  {deal_id}")
-    
+
+    resolved_wallet = resolve_agent_wallet(wallet)
     manifest = hash_directory(target_dir)
     if "error" in manifest:
         print(f"[!] Error: {manifest['error']}")
@@ -225,61 +310,60 @@ def action_deliver(target_dir: str, deal_id: str):
 
     timestamp = datetime.now(timezone.utc).isoformat()
     composite_hash = hashlib.sha256("".join(manifest.values()).encode("utf-8")).hexdigest()
-    
+
     proof_package = {
         "deal_id": deal_id,
         "timestamp_utc": timestamp,
         "composite_sha256": composite_hash,
         "agent_identity": DEFAULT_MAILBOX,
-        "agent_wallet": AGENT_WALLET,
+        "agent_wallet": resolved_wallet,
         "files_count": len(manifest),
         "manifest": manifest
     }
-    
+
     proof_path = os.path.join(target_dir if os.path.isdir(target_dir) else ".", "DELIVERY_MANIFEST.json")
     with open(proof_path, "w", encoding="utf-8") as f:
         json.dump(proof_package, f, indent=2)
-        
-    print(f"[OK] Manifest generated: {len(manifest)} files cryptographically signed.")
-    print(f"[OK] Composite Root SHA-256: {composite_hash}")
+
+    print(f"[OK] Manifest generated: {len(manifest)} files verified.")
+    print(f"[OK] Composite Root SHA-256 Integrity Hash: {composite_hash}")
     print(f"[OK] Saved receipt manifest to: {proof_path}")
     return proof_package
 
-def action_dispatch_email(deal_id: str, recipient: str, target_dir: str, live: bool = False):
-    print(f"\n[+] Composing Cryptographic Delivery Email for Mermail Gateway")
+def action_dispatch_email(deal_id: str, recipient: str, target_dir: str, wallet: str = None, dry_run: bool = False):
+    """Composes and dispatches an RFC-compliant delivery receipt through Mermail."""
+    print(f"\n[+] Composing Milestone Delivery Receipt for Mermail Gateway")
     print(f"[*] Recipient: {recipient}")
     print(f"[*] Deal:      {deal_id}")
-    print(f"[*] Delivery Mode: {'LIVE SMTP DISPATCH' if live else 'STAGED PREVIEW'}")
-    
+
+    resolved_wallet = resolve_agent_wallet(wallet)
     proof_path = os.path.join(target_dir if os.path.isdir(target_dir) else ".", "DELIVERY_MANIFEST.json")
     if not os.path.exists(proof_path):
-        proof = action_deliver(target_dir, deal_id)
+        proof = action_deliver(target_dir, deal_id, resolved_wallet)
     else:
         with open(proof_path, "r", encoding="utf-8") as f:
             proof = json.load(f)
 
     subject = f"MILESTONE DELIVERED // {deal_id} Proof of Work & Escrow Release Request"
-    email_body = f"""
-Dear Sponsor / Client,
+    email_body = f"""Dear Sponsor / Client,
 
-Apoorv A S has compiled and finalized Milestone Delivery for [{deal_id}].
+Milestone Delivery for [{deal_id}] has been finalized and compiled.
 
-CRYPTOGRAPHIC PROOF OF WORK:
+PROVENANCE & INTEGRITY MANIFEST:
 --------------------------------------------------------------------------------
-Agent Identity:       {DEFAULT_MAILBOX}
-Agent Wallet:         {proof.get('agent_wallet')}
-Composite SHA-256:    {proof.get('composite_sha256')}
-Timestamp (UTC):      {proof.get('timestamp_utc')}
-Total Verified Files: {proof.get('files_count')}
+Agent Mailbox Identity:   {DEFAULT_MAILBOX}
+Agent Settlement Wallet:  {resolved_wallet}
+Composite Root SHA-256:   {proof.get('composite_sha256')}
+Timestamp (UTC):          {proof.get('timestamp_utc')}
+Total Verified Files:     {proof.get('files_count')}
 --------------------------------------------------------------------------------
 
 DELIVERABLE ASSETS:
-The full source code, documentation, and executable demo packages have been sealed.
-All file hashes match the attached DELIVERY_MANIFEST.json.
+The full source code, test suites, and documentation have been sealed.
+All individual file checksums match the attached DELIVERY_MANIFEST.json.
 
-ESCROW RELEASE ACTION REQUIRED:
-Please release the locked milestone escrow balance to the Agent Wallet above.
-Upon release confirmation on-chain, the production repository ownership key will transfer instantly.
+ESCROW RELEASE REQUEST:
+Please confirm release of the milestone escrow balance to the Agent Wallet above.
 
 Respectfully,
 Apoorv A S (@apoorv_xs / @apoorv-xs)
@@ -289,60 +373,62 @@ Portfolio: https://apoorv.qzz.io
     print("\n-------------------------- [GENERATED EMAIL PREVIEW] --------------------------")
     print(email_body.strip())
     print("--------------------------------------------------------------------------------")
-    
-    if live:
-        res = query_live_mermail_mcp("send_email", {
-            "mailboxId": DEFAULT_MAILBOX,
+
+    if dry_run:
+        print("[*] Dry run mode enabled. Email preview verified without dispatch.")
+        return email_body
+
+    print("[*] Submitting to live Mermail MCP gateway (send_email)...")
+    res = query_live_mermail_mcp("send_email", {
+        "mailboxId": DEFAULT_MAILBOX,
+        "body": {
+            "from": DEFAULT_MAILBOX,
             "to": recipient,
             "subject": subject,
-            "body": email_body
-        })
-        if "error" in res:
-            print(f"[!] Live Send Warning: {res['error']}")
-        else:
-            print("[OK] Dispatched via Live Mermail MCP Gateway!")
+            "text": email_body
+        }
+    })
+
+    if "error" in res or res.get("isError"):
+        err = res.get("error", "Unknown dispatch failure")
+        print(f"[!] Dispatch Failed: {err}")
     else:
-        print("[OK] Email queued for instantaneous Mermail SMTP/MCP dispatch.")
+        structured = res.get("structuredContent", {})
+        status = structured.get("status", "unknown")
+        msg_id = structured.get("id", "N/A")
+        undo_until = structured.get("undo_until", "N/A")
+        print(f"[OK] Email Gateway Response:")
+        print(f"     - Status:     {status}")
+        print(f"     - Message ID: {msg_id}")
+        print(f"     - Undo Window: {undo_until}")
+        print(f"     Note: Message is in Mermail '{status}' state. Final delivery confirmed once undo window closes.")
     return email_body
 
-def run_demo(live: bool = False):
-    print(BANNER)
-    print(">>> STEP 1: SCAN INCOMING BOUNTY RFPs VIA MERMAIL")
-    action_scan(live=live)
-    
-    print("\n>>> STEP 2: VERIFY SUPERTEAM EARN BOUNTY ESCROW")
-    action_verify("MSG-9042", 500.0)
-    
-    print("\n>>> STEP 3: COMPILE CRYPTOGRAPHIC MILESTONE MANIFEST")
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    action_deliver(current_dir, "SUPERTEAM-MERMAIL-SKILL-500")
-    
-    print("\n>>> STEP 4: DISPATCH MERMAIL DELIVERY & ESCROW RELEASE NOTICE")
-    action_dispatch_email("SUPERTEAM-MERMAIL-SKILL-500", "bounties@superteam.fun", current_dir, live=live)
-    
-    print("\n[✔] COMPLETE AUTONOMOUS CYCLE EXECUTED WITH ZERO RUNTIME ERRORS.")
-    print("[✔] Production ready for live integration with Mermail MCP & Superteam Earn.\n")
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Mermail Bounty Escrow Agent Skill (v2.0)")
-    parser.add_argument("--action", choices=["scan", "verify", "deliver", "dispatch", "demo"], default="demo",
-                        help="Action to execute (default: demo)")
-    parser.add_argument("--deal-id", default="SUPERTEAM-MERMAIL-500", help="Deal or Message ID reference")
-    parser.add_argument("--amount", type=float, default=500.0, help="Expected milestone escrow amount (USDC)")
-    parser.add_argument("--target-dir", default=".", help="Target directory for cryptographic manifest")
+    parser = argparse.ArgumentParser(description="Mermail Bounty Escrow Agent Skill (v3.0 - Verified Standard)")
+    parser.add_argument("--action", choices=["scan", "verify", "deliver", "dispatch"], required=True,
+                        help="Action to execute")
+    parser.add_argument("--deal-id", default="SUPERTEAM-MERMAIL-500", help="Deal reference identifier")
+    parser.add_argument("--amount", type=float, default=500.0, help="Expected milestone escrow amount in USDC")
+    parser.add_argument("--escrow-address", help="On-chain escrow contract or token account address to audit")
+    parser.add_argument("--chain", default="solana", choices=["solana", "base"], help="Target blockchain for escrow audit")
+    parser.add_argument("--target-dir", default=".", help="Target directory to compute integrity manifest")
     parser.add_argument("--recipient", default="bounties@superteam.fun", help="Recipient email address")
-    parser.add_argument("--live", action="store_true", help="Connect directly to live Mermail MCP gateway")
+    parser.add_argument("--wallet", help="Agent settlement wallet address (overrides default/env)")
     parser.add_argument("--mailbox", default=DEFAULT_MAILBOX, help="Target Mermail mailbox ID")
-    
+    parser.add_argument("--sample-file", help="Path to sample RFC email file for testing extraction")
+    parser.add_argument("--dry-run", action="store_true", help="Preview actions without sending live emails")
+
     args = parser.parse_args()
-    
+
     if args.action == "scan":
-        action_scan(live=args.live, mailbox=args.mailbox)
+        action_scan(mailbox=args.mailbox, sample_file=args.sample_file)
     elif args.action == "verify":
-        action_verify(args.deal_id, args.amount)
+        if not args.escrow_address:
+            print("[!] Error: --escrow-address is required for real on-chain escrow verification.")
+            sys.exit(1)
+        action_verify_escrow(args.escrow_address, args.amount, chain=args.chain)
     elif args.action == "deliver":
-        action_deliver(args.target_dir, args.deal_id)
+        action_deliver(args.target_dir, args.deal_id, wallet=args.wallet)
     elif args.action == "dispatch":
-        action_dispatch_email(args.deal_id, args.recipient, args.target_dir, live=args.live)
-    else:
-        run_demo(live=args.live)
+        action_dispatch_email(args.deal_id, args.recipient, args.target_dir, wallet=args.wallet, dry_run=args.dry_run)
