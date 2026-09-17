@@ -30,7 +30,7 @@ The agent monitors its Mermail inbox for inbound RFPs, verifies on-chain counter
             |
             | 1. Sends RFP / Bounty Milestone via Email
             v
-   [ Mermail Gateway ] (`apoorv@mermail.me`)
+   [ Mermail Gateway ] (`agent@mermail.me`)
             |
             | 2. Fetched via Mermail MCP / Inbox CLI
             v
@@ -90,11 +90,10 @@ python mermail_bounty_escrow.py --action demo
 ================================================================================
   MERMAIL BOUNTY ESCROW // AUTONOMOUS AGENT SETTLEMENT ENGINE
   Protocol: Mermail Email Gateway + Dynamic Agent Wallet + On-chain RPC Escrow
-  Architect: Apoorv A S (@apoorv_xs) | Portfolio: https://apoorv.qzz.io
 ================================================================================
 
 >>> STEP 1: SCAN INCOMING BOUNTY RFPs VIA MERMAIL
-[+] Scanning Mermail Agent Inbox: apoorv@mermail.me ...
+[+] Scanning Mermail Agent Inbox: agent@mermail.me ...
 [+] Retrieved inbound bounty & deal messages.
 --------------------------------------------------------------------------------
 Message #1 | ID: MSG-9042 | [ESCROW FUNDED CANDIDATE]
@@ -112,8 +111,7 @@ Reward:  $500.00 USDC
 
 >>> STEP 3: COMPILE TAMPER-EVIDENT MILESTONE MANIFEST
 [+] Compiling Immutable Milestone Deliverable Manifest
-[OK] Manifest generated: 16 files verified.
-[OK] Composite Root SHA-256 Integrity Hash: 54ab24068abee6ca7174d2c5aacc9970e4f7f171934db09093b412ba9a70816b
+[OK] Manifest generated: 10 files verified.
 [OK] Saved receipt manifest to: skills/mermail-bounty-escrow/DELIVERY_MANIFEST.json
 
 >>> STEP 4: DISPATCH MERMAIL DELIVERY & ESCROW RELEASE NOTICE
@@ -152,7 +150,7 @@ python mermail_bounty_escrow.py --action dispatch --deal-id SUPERTEAM-MERMAIL-SK
 - **Target Repository:** [Nudgen-Marketing/mermail-skills](https://github.com/Nudgen-Marketing/mermail-skills)
 - **AI Client Used:** Gemini Pro / Antigravity Agent Runtime + FastMCP
 - **Demo Command:** `python mermail_bounty_escrow.py --action demo --live`
-- **Verification Hash:** [`DELIVERY_MANIFEST.json`](file:///skills/mermail-bounty-escrow/DELIVERY_MANIFEST.json) (Composite Root: `46de9c284d9b2b3e57c7eaced704e5e9cf14fc4d02223428e36b4831a835c7d5`)
+- **Verification Hash:** [`DELIVERY_MANIFEST.json`](file:///skills/mermail-bounty-escrow/DELIVERY_MANIFEST.json) (Composite Root: `eb3e101f0cb5be3caa906dea6c854f060cfcf1669f8b0953bd0ca4d5e4d4c614`)
 - **Creator / Architect:** Apoorv A S ([@apoorv_xs](https://x.com/apoorv_xs))
 - **Settlement Wallet:** Dynamic (Configured via `--wallet` or `AGENT_WALLET_ADDRESS`)
 

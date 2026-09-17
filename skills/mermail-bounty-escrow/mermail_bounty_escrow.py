@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 r"""
-MERMAIL BOUNTY ESCROW AGENT SKILL (v3.0 - Verified Production Standard)
+MERMAIL BOUNTY ESCROW AGENT SKILL (v3.0 - Production Standard)
 Autonomous bounty email scanning, NLP extraction, real on-chain counterparty escrow verification,
 tamper-evident SHA-256 deliverable manifest generation, and authentic Mermail dispatch.
-
-Author: Apoorv A S (@apoorv-xs / @apoorv_xs)
-Workspace: B:\vault\mermail-skills-repo\skills\mermail-bounty-escrow\
 """
 
 import sys
@@ -28,25 +25,46 @@ BANNER = """
 ================================================================================
   MERMAIL BOUNTY ESCROW // AUTONOMOUS AGENT SETTLEMENT ENGINE (v3.0)
   Protocol: Mermail Email Gateway + Dynamic Agent Wallet + On-Chain Escrow Audit
-  Architect: Apoorv A S (@apoorv_xs) | Portfolio: https://apoorv.qzz.io
 ================================================================================
 """
 
 DEFAULT_ENDPOINT = "https://console.mermail.app/mcp"
 DEFAULT_API_KEY = os.environ.get("MERMAIL_API_KEY", "")
-DEFAULT_MAILBOX = "ricksanchez@mermail.app"
+DEFAULT_MAILBOX = os.environ.get("MERMAIL_MAILBOX_ID", "")
+AGENT_IDENTITY = os.environ.get("AGENT_IDENTITY", "")
+AGENT_NAME = os.environ.get("AGENT_NAME", "Autonomous Bounty Agent")
+AGENT_TITLE = os.environ.get("AGENT_TITLE", "AI Engineering Agent")
 SOLANA_RPC_URL = os.environ.get("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com")
 BASE_RPC_URL = os.environ.get("BASE_RPC_URL", "https://mainnet.base.org")
 
 def resolve_agent_wallet(explicit_wallet: str = None) -> str:
-    """Dynamically resolves agent settlement wallet from flag, env, or user setting."""
+    """Dynamically resolves agent settlement wallet from flag, env, or prompts if missing."""
     if explicit_wallet and explicit_wallet.strip():
         return explicit_wallet.strip()
-    env_wallet = os.environ.get("AGENT_WALLET_ADDRESS", "").strip()
+    env_wallet = os.environ.get("AGENT_WALLET_ADDRESS", "").strip() or os.environ.get("SOLANA_WALLET_ADDRESS", "").strip()
     if env_wallet:
         return env_wallet
-    # Fallback to public creative portfolio settlement wallet
-    return "2PjfGyk1PcnXPj26BpaE4BicdbR5uGce9ULV7NMKpac9"
+    return "WALLET_NOT_CONFIGURED"
+
+def resolve_agent_mailbox(explicit_mailbox: str = None) -> str:
+    """Dynamically resolves active Mermail mailbox from flag, env, or gateway inquiry."""
+    if explicit_mailbox and explicit_mailbox.strip():
+        return explicit_mailbox.strip()
+    env_mailbox = os.environ.get("MERMAIL_MAILBOX_ID", "").strip()
+    if env_mailbox:
+        return env_mailbox
+    # Attempt to query live mailboxes from Mermail gateway if API key is present
+    if DEFAULT_API_KEY:
+        try:
+            res = query_live_mermail_mcp("list_mailboxes", {})
+            items = res.get("structuredContent", {}).get("items", [])
+            if items:
+                primary = items[0]
+                return primary.get("public_id") or primary.get("email") or ""
+        except Exception:
+            pass
+    return "agent@mermail.me"
+
 
 def query_live_mermail_mcp(tool_name: str, args: dict, endpoint: str = DEFAULT_ENDPOINT, api_key: str = None):
     """Executes a JSON-RPC tool call against the live hosted Mermail MCP gateway."""
@@ -315,7 +333,7 @@ def action_deliver(target_dir: str, deal_id: str, wallet: str = None) -> dict:
         "deal_id": deal_id,
         "timestamp_utc": timestamp,
         "composite_sha256": composite_hash,
-        "agent_identity": DEFAULT_MAILBOX,
+        "agent_identity": resolve_agent_mailbox(),
         "agent_wallet": resolved_wallet,
         "files_count": len(manifest),
         "manifest": manifest
@@ -330,13 +348,15 @@ def action_deliver(target_dir: str, deal_id: str, wallet: str = None) -> dict:
     print(f"[OK] Saved receipt manifest to: {proof_path}")
     return proof_package
 
-def action_dispatch_email(deal_id: str, recipient: str, target_dir: str, wallet: str = None, dry_run: bool = False):
+def action_dispatch_email(deal_id: str, recipient: str, target_dir: str, wallet: str = None, mailbox: str = None, dry_run: bool = False):
     """Composes and dispatches an RFC-compliant delivery receipt through Mermail."""
-    print(f"\n[+] Composing Milestone Delivery Receipt for Mermail Gateway")
-    print(f"[*] Recipient: {recipient}")
-    print(f"[*] Deal:      {deal_id}")
-
+    active_mailbox = resolve_agent_mailbox(mailbox)
     resolved_wallet = resolve_agent_wallet(wallet)
+    print(f"\n[+] Composing Milestone Delivery Receipt for Mermail Gateway")
+    print(f"[*] Sender Mailbox: {active_mailbox}")
+    print(f"[*] Recipient:      {recipient}")
+    print(f"[*] Deal:           {deal_id}")
+
     proof_path = os.path.join(target_dir if os.path.isdir(target_dir) else ".", "DELIVERY_MANIFEST.json")
     if not os.path.exists(proof_path):
         proof = action_deliver(target_dir, deal_id, resolved_wallet)
@@ -351,7 +371,7 @@ Milestone Delivery for [{deal_id}] has been finalized and compiled.
 
 PROVENANCE & INTEGRITY MANIFEST:
 --------------------------------------------------------------------------------
-Agent Mailbox Identity:   {DEFAULT_MAILBOX}
+Agent Mailbox Identity:   {active_mailbox}
 Agent Settlement Wallet:  {resolved_wallet}
 Composite Root SHA-256:   {proof.get('composite_sha256')}
 Timestamp (UTC):          {proof.get('timestamp_utc')}
@@ -366,9 +386,8 @@ ESCROW RELEASE REQUEST:
 Please confirm release of the milestone escrow balance to the Agent Wallet above.
 
 Respectfully,
-Apoorv A S (@apoorv_xs / @apoorv-xs)
-Creative Technologist & 3D WebUI Architect
-Portfolio: https://apoorv.qzz.io
+{AGENT_NAME}
+{AGENT_TITLE}
 """
     print("\n-------------------------- [GENERATED EMAIL PREVIEW] --------------------------")
     print(email_body.strip())
@@ -380,9 +399,9 @@ Portfolio: https://apoorv.qzz.io
 
     print("[*] Submitting to live Mermail MCP gateway (send_email)...")
     res = query_live_mermail_mcp("send_email", {
-        "mailboxId": DEFAULT_MAILBOX,
+        "mailboxId": active_mailbox,
         "body": {
-            "from": DEFAULT_MAILBOX,
+            "from": active_mailbox,
             "to": recipient,
             "subject": subject,
             "text": email_body
@@ -415,14 +434,16 @@ if __name__ == "__main__":
     parser.add_argument("--target-dir", default=".", help="Target directory to compute integrity manifest")
     parser.add_argument("--recipient", default="bounties@superteam.fun", help="Recipient email address")
     parser.add_argument("--wallet", help="Agent settlement wallet address (overrides default/env)")
-    parser.add_argument("--mailbox", default=DEFAULT_MAILBOX, help="Target Mermail mailbox ID")
+    parser.add_argument("--mailbox", default=None, help="Target Mermail mailbox ID")
     parser.add_argument("--sample-file", help="Path to sample RFC email file for testing extraction")
     parser.add_argument("--dry-run", action="store_true", help="Preview actions without sending live emails")
 
     args = parser.parse_args()
 
+    active_mailbox = resolve_agent_mailbox(args.mailbox)
+
     if args.action == "scan":
-        action_scan(mailbox=args.mailbox, sample_file=args.sample_file)
+        action_scan(mailbox=active_mailbox, sample_file=args.sample_file)
     elif args.action == "verify":
         if not args.escrow_address:
             print("[!] Error: --escrow-address is required for real on-chain escrow verification.")
@@ -431,4 +452,4 @@ if __name__ == "__main__":
     elif args.action == "deliver":
         action_deliver(args.target_dir, args.deal_id, wallet=args.wallet)
     elif args.action == "dispatch":
-        action_dispatch_email(args.deal_id, args.recipient, args.target_dir, wallet=args.wallet, dry_run=args.dry_run)
+        action_dispatch_email(args.deal_id, args.recipient, args.target_dir, wallet=args.wallet, mailbox=active_mailbox, dry_run=args.dry_run)

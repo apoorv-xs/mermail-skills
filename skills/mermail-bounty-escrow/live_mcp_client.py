@@ -25,7 +25,6 @@ async def run_live_mcp_client():
     os.system("cls" if os.name == "nt" else "clear")
     print("=" * 80)
     print("  LIVE MCP PROTOCOL CLIENT // MERMAIL BOUNTY ESCROW AGENT (v3.0)")
-    print("  Architect: Apoorv A S (@apoorv_xs) | Portfolio: https://apoorv.qzz.io")
     print("  Gateway:   https://console.mermail.app/mcp (Production Hosted Gateway)")
     print("=" * 80)
     print()

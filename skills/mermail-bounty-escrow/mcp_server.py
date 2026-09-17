@@ -16,7 +16,7 @@ if sys.platform == "win32":
 mcp = FastMCP("Mermail-Bounty-Escrow-MCP")
 
 ENDPOINT = "https://console.mermail.app/mcp"
-DEFAULT_MAILBOX = "ricksanchez@mermail.app"
+DEFAULT_MAILBOX = os.environ.get("MERMAIL_MAILBOX_ID", "")
 SOLANA_RPC_URL = os.environ.get("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com")
 BASE_RPC_URL = os.environ.get("BASE_RPC_URL", "https://mainnet.base.org")
 
@@ -26,10 +26,28 @@ def _get_api_key():
 def _resolve_wallet(override_wallet: str = None) -> str:
     if override_wallet and override_wallet.strip():
         return override_wallet.strip()
-    env_w = os.environ.get("AGENT_WALLET_ADDRESS", "").strip()
+    env_w = os.environ.get("AGENT_WALLET_ADDRESS", "").strip() or os.environ.get("SOLANA_WALLET_ADDRESS", "").strip()
     if env_w:
         return env_w
-    return "2PjfGyk1PcnXPj26BpaE4BicdbR5uGce9ULV7NMKpac9"
+    return "WALLET_NOT_CONFIGURED"
+
+def _resolve_mailbox(override_mailbox: str = None) -> str:
+    if override_mailbox and override_mailbox.strip():
+        return override_mailbox.strip()
+    env_mb = os.environ.get("MERMAIL_MAILBOX_ID", "").strip()
+    if env_mb:
+        return env_mb
+    api_key = _get_api_key()
+    if api_key:
+        try:
+            res = _query_mermail_gateway("list_mailboxes", {})
+            items = res.get("structuredContent", {}).get("items", [])
+            if items:
+                primary = items[0]
+                return primary.get("public_id") or primary.get("email") or ""
+        except Exception:
+            pass
+    return "agent@mermail.me"
 
 def _query_mermail_gateway(tool_name: str, args: dict):
     req_body = {
@@ -82,15 +100,16 @@ def mermail_get_wallet(explicit_wallet: str = None) -> str:
     }, indent=2)
 
 @mcp.tool()
-def mermail_fetch_inbox(query: str = "bounty", limit: int = 5, mailboxId: str = DEFAULT_MAILBOX) -> str:
+def mermail_fetch_inbox(query: str = "bounty", limit: int = 5, mailboxId: str = None) -> str:
     """Scan Mermail agent inbox for incoming RFPs and bounty milestone awards."""
-    res = _query_mermail_gateway("list_emails", {"mailboxId": mailboxId})
+    active_mailbox = _resolve_mailbox(mailboxId)
+    res = _query_mermail_gateway("list_emails", {"mailboxId": active_mailbox})
     if "error" in res or res.get("isError"):
         return json.dumps({
             "source": "LIVE_MERMAIL_GATEWAY",
             "status": "error",
             "message": res.get("error", "Failed to query Mermail gateway"),
-            "mailbox": mailboxId,
+            "mailbox": active_mailbox,
             "inbox": []
         }, indent=2)
 
@@ -106,47 +125,39 @@ def mermail_fetch_inbox(query: str = "bounty", limit: int = 5, mailboxId: str = 
         })
     return json.dumps({
         "source": "LIVE_MERMAIL_GATEWAY",
-        "mailbox": mailboxId,
+        "mailbox": active_mailbox,
         "count": len(parsed),
         "inbox": parsed
     }, indent=2)
 
 @mcp.tool()
 def mermail_verify_escrow(escrow_address: str, expected_amount: float, chain: str = "solana") -> str:
-    """Audit on-chain counterparty escrow using live public blockchain RPC before initiating heavy compute."""
+    """Audit on-chain counterparty escrow locks via public RPC nodes prior to burning compute."""
     if not escrow_address or "..." in escrow_address or len(escrow_address) < 32:
         return json.dumps({
             "escrow_address": escrow_address,
+            "chain": chain,
             "verified": False,
-            "error": "Invalid or truncated contract address",
-            "action": "HALT_UNFUNDED_COMPUTE"
+            "action": "HALT_UNFUNDED_COMPUTE",
+            "reason": "Invalid or incomplete escrow address provided"
         }, indent=2)
 
     if chain.lower() == "solana":
-        rpc_res = _query_solana_rpc("getTokenAccountBalance", [escrow_address])
-        if "error" not in rpc_res and "result" in rpc_res:
-            token_amount = rpc_res["result"].get("value", {}).get("uiAmount", 0.0)
-            if token_amount >= expected_amount:
+        # Check SPL Token Account balance
+        token_res = _query_solana_rpc("getTokenAccountBalance", [escrow_address])
+        if "result" in token_res and "value" in token_res["result"]:
+            val = token_res["result"]["value"]
+            ui_amount = val.get("uiAmount", 0.0)
+            if ui_amount >= expected_amount:
                 return json.dumps({
                     "escrow_address": escrow_address,
                     "chain": "solana",
                     "verified": True,
-                    "locked_amount_usdc": token_amount,
-                    "expected_amount_usdc": expected_amount,
+                    "locked_usdc_balance": ui_amount,
                     "action": "PROCEED_WITH_EXECUTION"
                 }, indent=2)
-            else:
-                return json.dumps({
-                    "escrow_address": escrow_address,
-                    "chain": "solana",
-                    "verified": False,
-                    "locked_amount_usdc": token_amount,
-                    "expected_amount_usdc": expected_amount,
-                    "action": "HALT_UNFUNDED_COMPUTE",
-                    "reason": "Escrow balance shortfall"
-                }, indent=2)
-        
-        # Check native SOL fallback
+
+        # Check native SOL balance
         bal_res = _query_solana_rpc("getBalance", [escrow_address])
         if "result" in bal_res and "value" in bal_res["result"]:
             sol_bal = bal_res["result"]["value"] / 1e9
@@ -168,12 +179,13 @@ def mermail_verify_escrow(escrow_address: str, expected_amount: float, chain: st
     }, indent=2)
 
 @mcp.tool()
-def mermail_send_email(to: str, subject: str, body: str, mailboxId: str = DEFAULT_MAILBOX) -> str:
+def mermail_send_email(to: str, subject: str, body: str, mailboxId: str = None) -> str:
     """Dispatch RFC-compliant email and escrow claim via Mermail gateway."""
+    active_mailbox = _resolve_mailbox(mailboxId)
     res = _query_mermail_gateway("send_email", {
-        "mailboxId": mailboxId,
+        "mailboxId": active_mailbox,
         "body": {
-            "from": mailboxId,
+            "from": active_mailbox,
             "to": to,
             "subject": subject,
             "text": body
@@ -185,7 +197,7 @@ def mermail_send_email(to: str, subject: str, body: str, mailboxId: str = DEFAUL
             "status": structured.get("status", "queued"),
             "id": structured.get("id"),
             "undo_until": structured.get("undo_until"),
-            "sender": mailboxId,
+            "sender": active_mailbox,
             "recipient": to,
             "subject": subject
         }, indent=2)
@@ -193,7 +205,7 @@ def mermail_send_email(to: str, subject: str, body: str, mailboxId: str = DEFAUL
     return json.dumps({
         "status": "error",
         "details": res.get("error", "Unknown gateway dispatch error"),
-        "sender": mailboxId,
+        "sender": active_mailbox,
         "recipient": to
     }, indent=2)
 

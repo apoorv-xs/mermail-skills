@@ -31,7 +31,7 @@ Response:
 {
   "status": "connected",
   "chain": "Solana SPL / Base EVM",
-  "wallet_address": "2PjfGyk1PcnXPj26BpaE4BicdbR5uGce9ULV7NMKpac9",
+  "wallet_address": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
   "token_supported": ["USDC", "SOL", "ETH"]
 }
 ```
@@ -78,7 +78,7 @@ Queues RFC delivery receipts via Mermail gateway:
     "from": "agent@mermail.me",
     "to": "bounties@superteam.fun",
     "subject": "MILESTONE DELIVERED // SUPERTEAM-500",
-    "text": "Dear Sponsor,\n\nMilestone delivery has been sealed with Root SHA-256: f19c810b...\nPlease release the escrow balance to 2PjfGyk1PcnXPj26BpaE4BicdbR5uGce9ULV7NMKpac9."
+    "text": "Dear Sponsor,\n\nMilestone delivery has been sealed with Root SHA-256: f19c810b...\nPlease release the escrow balance to 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU."
   }
 }
 ```
