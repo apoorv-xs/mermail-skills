@@ -71,9 +71,11 @@ The agent monitors its Mermail inbox for inbound RFPs, verifies on-chain counter
 
 ## 4. Live 5-Minute Demo Walkthrough
 
-### Prerequisites
+### Prerequisites & Connection Models
 - Python 3.10+ installed
 - Zero paid API keys required for on-chain RPC auditing
+- **AI MCP Clients (Claude Desktop / Cursor / Codex):** Supports native MCP OAuth via `https://console.mermail.app/mcp`. If unauthenticated, a browser pop-up automatically opens (via Enoki OAuth) for instant single-click sign-in and authorization.
+- **Standalone Terminal / CLI:** Can run with direct API key (`$env:MERMAIL_API_KEY`) or in dry-run/preview mode (`--action demo`) which gracefully handles unauthenticated gateway responses while executing full real on-chain escrow checks.
 
 ### Step 1: Clone or Navigate to Skill Directory
 ```bash
@@ -184,7 +186,7 @@ python mermail_bounty_escrow.py --action dispatch --deal-id SUPERTEAM-MERMAIL-SK
 - **Target Repository:** [Nudgen-Marketing/mermail-skills](https://github.com/Nudgen-Marketing/mermail-skills)
 - **AI Client Used:** Gemini Pro / Antigravity Agent Runtime + FastMCP
 - **Demo Command:** `python mermail_bounty_escrow.py --action demo --target-dir .`
-- **Verification Hash:** [`DELIVERY_MANIFEST.json`](file:///skills/mermail-bounty-escrow/DELIVERY_MANIFEST.json) (Composite Root: `ec9a34e4faa44af0d813a47ebf57c335e4f9aa524b23a85c9227d4a013b202b9`)
+- **Verification Hash:** [`DELIVERY_MANIFEST.json`](file:///skills/mermail-bounty-escrow/DELIVERY_MANIFEST.json) (Composite Root: `b9e1d13cd6b6e5adb1692ab70bca78fbe928795eb52a0720cc285553daf87d96`)
 - **Creator / Architect:** Apoorv A S ([@apoorv_xs](https://x.com/apoorv_xs))
 - **Settlement Wallet:** Dynamic (Configured via `--wallet` or `AGENT_WALLET_ADDRESS`)
 

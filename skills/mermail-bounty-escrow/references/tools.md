@@ -85,6 +85,8 @@ python mermail_bounty_escrow.py --action demo --target-dir .
 
 ---
 
+---
+
 ## 3. Optional Local FastMCP Sidecar (`mcp_server.py`)
 
 For local agent environments that require a unified JSON-RPC bridge, the included `mcp_server.py` sidecar exposes local FastMCP wrappers:
@@ -92,5 +94,21 @@ For local agent environments that require a unified JSON-RPC bridge, the include
 - `mermail_fetch_inbox`
 - `mermail_verify_escrow`
 - `mermail_send_email`
+
+---
+
+## 4. Connection & Authentication Models
+
+Depending on how an agent runtime or evaluator invokes the skill, authentication operates across two standard models:
+
+### Mode A: AI MCP Clients (Claude Desktop / Cursor / Codex / ChatGPT)
+- Uses hosted Streamable HTTP MCP at `https://console.mermail.app/mcp`.
+- **Browser OAuth Flow:** When connected via MCP OAuth, if the client is not yet authenticated, a browser window opens automatically (via Enoki OAuth) prompting the user/evaluator to sign in with their Google/Enoki account and click **Authorize**.
+- Tools (`list_mailboxes`, `list_emails`, `save_draft`, `send_email`) are immediately discovered and accessible without manually handling raw API keys.
+
+### Mode B: Standalone Terminal / CLI (`python mermail_bounty_escrow.py`)
+- Independent Python CLI operations run outside of desktop browser redirect interceptors.
+- Supports authenticated gateway calls via `MERMAIL_API_KEY` and `MERMAIL_MAILBOX_ID` environment variables.
+- If run unauthenticated (e.g. `python mermail_bounty_escrow.py --action demo`), it catches HTTP 401 cleanly, logs the gateway state, and executes on-chain RPC audits and manifest generation end-to-end without crashing.
 
 
