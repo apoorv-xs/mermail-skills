@@ -27,7 +27,7 @@ async def run_live_production_demo():
     print()
 
     endpoint = "https://console.mermail.app/mcp"
-    api_key = os.environ.get("MERMAIL_API_KEY", "sk-proj-8a4ffe5fd1432586d3350aa0dbf2b84f92fb73f3c4b514aa")
+    api_key = os.environ.get("MERMAIL_API_KEY", "")
 
     import urllib.request
     import json

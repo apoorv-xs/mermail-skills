@@ -17,7 +17,7 @@ mcp = FastMCP("Mermail-Bounty-Escrow-MCP")
 
 WALLET_ADDRESS = "2PjfGyk1PcnXPj26BpaE4BicdbR5uGce9ULV7NMKpac9"
 ENDPOINT = "https://console.mermail.app/mcp"
-API_KEY = os.environ.get("MERMAIL_API_KEY", "sk-proj-8a4ffe5fd1432586d3350aa0dbf2b84f92fb73f3c4b514aa")
+API_KEY = os.environ.get("MERMAIL_API_KEY", "")
 DEFAULT_MAILBOX = "ricksanchez@mermail.app"
 
 def _query_mermail_gateway(tool_name: str, args: dict):

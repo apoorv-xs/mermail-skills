@@ -1,4 +1,4 @@
-﻿import sys
+import sys
 import os
 import json
 import urllib.request
@@ -15,7 +15,7 @@ from mcp.server.fastmcp import FastMCP
 mcp = FastMCP("mermail-live")
 
 ENDPOINT = "https://console.mermail.app/mcp"
-API_KEY = os.environ.get("MERMAIL_API_KEY", "sk-proj-8a4ffe5fd1432586d3350aa0dbf2b84f92fb73f3c4b514aa")
+API_KEY = os.environ.get("MERMAIL_API_KEY", "")
 
 def _forward_mcp(tool_name: str, args: dict):
     req_body = {
