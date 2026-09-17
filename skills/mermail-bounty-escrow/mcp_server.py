@@ -75,36 +75,57 @@ def _query_mermail_gateway(tool_name: str, args: dict):
     except Exception as e:
         return {"error": str(e), "isError": True}
 
+SOLANA_RPC_FALLBACKS = [
+    os.environ.get("SOLANA_RPC_URL", "").strip(),
+    "https://api.mainnet-beta.solana.com",
+    "https://rpc.ankr.com/solana"
+]
+BASE_RPC_FALLBACKS = [
+    os.environ.get("BASE_RPC_URL", "").strip(),
+    "https://mainnet.base.org",
+    "https://base-rpc.publicnode.com",
+    "https://base.llamarpc.com"
+]
+
+HTTP_HEADERS = {
+    "content-type": "application/json",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+}
+
 def _query_solana_rpc(method: str, params: list) -> dict:
     payload = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
-    req = urllib.request.Request(
-        SOLANA_RPC_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"content-type": "application/json", "User-Agent": "mermail-bounty-mcp/3.0"}
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except Exception as e:
-        return {"error": str(e)}
+    body = json.dumps(payload).encode("utf-8")
+    endpoints = [ep for ep in SOLANA_RPC_FALLBACKS if ep]
+    last_err = None
+    for ep in endpoints:
+        req = urllib.request.Request(ep, data=body, headers=HTTP_HEADERS)
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except Exception as e:
+            last_err = str(e)
+            continue
+    return {"error": last_err or "All Solana RPC endpoints failed"}
 
-def _query_evm_rpc(to_address: str, data: str, rpc_url: str = BASE_RPC_URL) -> dict:
+def _query_evm_rpc(to_address: str, data: str) -> dict:
     payload = {
         "jsonrpc": "2.0",
         "id": 1,
         "method": "eth_call",
         "params": [{"to": to_address, "data": data}, "latest"]
     }
-    req = urllib.request.Request(
-        rpc_url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"content-type": "application/json", "User-Agent": "mermail-bounty-mcp/3.0"}
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except Exception as e:
-        return {"error": str(e)}
+    body = json.dumps(payload).encode("utf-8")
+    endpoints = [ep for ep in BASE_RPC_FALLBACKS if ep]
+    last_err = None
+    for ep in endpoints:
+        req = urllib.request.Request(ep, data=body, headers=HTTP_HEADERS)
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except Exception as e:
+            last_err = str(e)
+            continue
+    return {"error": last_err or "All EVM RPC endpoints failed"}
 
 @mcp.tool()
 def mermail_get_wallet(explicit_wallet: str = None) -> str:
@@ -161,7 +182,8 @@ def mermail_verify_escrow(escrow_address: str, expected_amount: float, chain: st
         }, indent=2)
 
     if chain.lower() == "solana":
-        # Check SPL Token Account balance
+        USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+        # 1. Direct SPL Token Account check
         token_res = _query_solana_rpc("getTokenAccountBalance", [escrow_address])
         if "result" in token_res and "value" in token_res["result"]:
             val = token_res["result"]["value"]
@@ -175,7 +197,26 @@ def mermail_verify_escrow(escrow_address: str, expected_amount: float, chain: st
                     "action": "PROCEED_WITH_EXECUTION"
                 }, indent=2)
 
-        # Check native SOL balance
+        # 2. Check if it's a Wallet Owner address holding USDC ATA(s)
+        owner_res = _query_solana_rpc("getTokenAccountsByOwner", [
+            escrow_address,
+            {"mint": USDC_MINT},
+            {"encoding": "jsonParsed"}
+        ])
+        if "result" in owner_res and "value" in owner_res["result"]:
+            atas = owner_res["result"]["value"]
+            if atas:
+                total_usdc = sum(float(a.get("account", {}).get("data", {}).get("parsed", {}).get("info", {}).get("tokenAmount", {}).get("uiAmount", 0.0) or 0.0) for a in atas)
+                if total_usdc >= expected_amount:
+                    return json.dumps({
+                        "escrow_address": escrow_address,
+                        "chain": "solana",
+                        "verified": True,
+                        "locked_usdc_balance": total_usdc,
+                        "action": "PROCEED_WITH_EXECUTION"
+                    }, indent=2)
+
+        # 3. Check native SOL balance
         bal_res = _query_solana_rpc("getBalance", [escrow_address])
         if "result" in bal_res and "value" in bal_res["result"]:
             sol_bal = bal_res["result"]["value"] / 1e9

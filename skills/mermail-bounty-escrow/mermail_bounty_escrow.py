@@ -94,43 +94,66 @@ def query_live_mermail_mcp(tool_name: str, args: dict, endpoint: str = DEFAULT_E
     except Exception as e:
         return {"error": str(e), "isError": True}
 
-def query_solana_rpc(method: str, params: list, rpc_url: str = SOLANA_RPC_URL) -> dict:
-    """Queries live Solana RPC node for on-chain state verification."""
+SOLANA_RPC_FALLBACKS = [
+    os.environ.get("SOLANA_RPC_URL", "").strip(),
+    "https://api.mainnet-beta.solana.com",
+    "https://rpc.ankr.com/solana"
+]
+BASE_RPC_FALLBACKS = [
+    os.environ.get("BASE_RPC_URL", "").strip(),
+    "https://mainnet.base.org",
+    "https://base-rpc.publicnode.com",
+    "https://base.llamarpc.com"
+]
+
+HTTP_HEADERS = {
+    "content-type": "application/json",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+}
+
+def query_solana_rpc(method: str, params: list, rpc_url: str = None) -> dict:
+    """Queries live Solana RPC node for on-chain state verification with automatic endpoint fallback."""
     payload = {
         "jsonrpc": "2.0",
         "id": 1,
         "method": method,
         "params": params
     }
-    req = urllib.request.Request(
-        rpc_url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"content-type": "application/json", "User-Agent": "mermail-bounty-escrow/3.0"}
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except Exception as e:
-        return {"error": str(e)}
+    data = json.dumps(payload).encode("utf-8")
+    endpoints = [rpc_url] if rpc_url else [ep for ep in SOLANA_RPC_FALLBACKS if ep]
+    
+    last_err = None
+    for ep in endpoints:
+        req = urllib.request.Request(ep, data=data, headers=HTTP_HEADERS)
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except Exception as e:
+            last_err = str(e)
+            continue
+    return {"error": last_err or "All Solana RPC endpoints failed"}
 
-def query_evm_rpc(to_address: str, data: str, rpc_url: str = BASE_RPC_URL) -> dict:
-    """Queries live EVM/Base RPC node for contract state verification."""
+def query_evm_rpc(to_address: str, data: str, rpc_url: str = None) -> dict:
+    """Queries live EVM/Base RPC node for contract state verification with automatic endpoint fallback."""
     payload = {
         "jsonrpc": "2.0",
         "id": 1,
         "method": "eth_call",
         "params": [{"to": to_address, "data": data}, "latest"]
     }
-    req = urllib.request.Request(
-        rpc_url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"content-type": "application/json", "User-Agent": "mermail-bounty-escrow/3.0"}
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except Exception as e:
-        return {"error": str(e)}
+    body = json.dumps(payload).encode("utf-8")
+    endpoints = [rpc_url] if rpc_url else [ep for ep in BASE_RPC_FALLBACKS if ep]
+    
+    last_err = None
+    for ep in endpoints:
+        req = urllib.request.Request(ep, data=body, headers=HTTP_HEADERS)
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except Exception as e:
+            last_err = str(e)
+            continue
+    return {"error": last_err or "All EVM RPC endpoints failed"}
 
 def parse_bounty_from_text(text: str, subject: str = "") -> dict:
     """Extracts reward parameters, token types, and counterparty escrow addresses from message bodies."""
@@ -160,7 +183,10 @@ def parse_bounty_from_text(text: str, subject: str = "") -> dict:
             contract = candidate
             token = "USDC (Solana SPL)"
 
-    has_escrow = bool(re.search(r'(escrow|locked|funded|deposit confirmed)', combined, re.IGNORECASE))
+    # Detect positive escrow indication while ignoring explicit negations (e.g. 'no escrow', 'not locked', 'unfunded')
+    negation = bool(re.search(r'\b(no|not|without|unfunded|zero)\s+(?:escrow|locked|funds|deposit)', combined, re.IGNORECASE))
+    positive_mention = bool(re.search(r'\b(escrow|locked|funded|deposit confirmed)\b', combined, re.IGNORECASE))
+    has_escrow = positive_mention and not negation
     return {
         "reward_amount": reward,
         "token": token,
@@ -171,15 +197,16 @@ def parse_bounty_from_text(text: str, subject: str = "") -> dict:
 def hash_directory(target_path: str) -> dict:
     """Computes SHA-256 integrity checksums for all files in target_path to build a tamper-evident manifest."""
     manifest = {}
-    if not os.path.exists(target_path):
+    normalized_path = os.path.normpath(target_path)
+    if not os.path.exists(normalized_path):
         return {"error": f"Target path '{target_path}' not found."}
 
-    if os.path.isfile(target_path):
-        with open(target_path, "rb") as f:
-            manifest[os.path.basename(target_path)] = hashlib.sha256(f.read()).hexdigest()
+    if os.path.isfile(normalized_path):
+        with open(normalized_path, "rb") as f:
+            manifest[os.path.basename(normalized_path)] = hashlib.sha256(f.read()).hexdigest()
         return manifest
 
-    for root, _, files in os.walk(target_path):
+    for root, _, files in os.walk(normalized_path):
         for file in sorted(files):
             if file.startswith(".") or file.endswith(".pyc") or "__pycache__" in root:
                 continue
@@ -187,7 +214,7 @@ def hash_directory(target_path: str) -> dict:
             if file in ("DELIVERY_MANIFEST.json", "SUBMISSION_README.md"):
                 continue
             full_p = os.path.join(root, file)
-            rel_p = os.path.relpath(full_p, target_path).replace("\\", "/")
+            rel_p = os.path.relpath(full_p, normalized_path).replace("\\", "/")
             try:
                 with open(full_p, "rb") as f:
                     manifest[rel_p] = hashlib.sha256(f.read()).hexdigest()
@@ -270,30 +297,54 @@ def action_verify_escrow(escrow_address: str, expected_amount: float, chain: str
         return False
 
     if chain.lower() == "solana":
-        # Query Solana token account balance via public RPC
-        rpc_res = query_solana_rpc("getTokenAccountBalance", [escrow_address])
-        if "error" in rpc_res or "result" not in rpc_res:
-            print(f"[WARN] Solana RPC query returned: {rpc_res.get('error', 'Account not found or not an SPL token account')}")
-            # Check if it's a native SOL account
-            bal_res = query_solana_rpc("getBalance", [escrow_address])
-            if "result" in bal_res and "value" in bal_res["result"]:
-                sol_bal = bal_res["result"]["value"] / 1e9
-                print(f"[*] Account exists on-chain. Native SOL Balance: {sol_bal:.4f} SOL")
-                if sol_bal > 0:
-                    print(f"[OK] On-chain account active. Execution conditional approval granted.")
-                    return True
-            print(f"[TREASURY ARMOR] Escrow lock unconfirmed on-chain. Halting compute.")
-            return False
+        USDC_MINT_SOLANA = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
         
-        token_amount = rpc_res["result"].get("value", {}).get("uiAmount", 0.0)
-        print(f"[*] On-Chain Verified Balance: ${token_amount:,.2f} USDC")
-        if token_amount >= expected_amount:
-            print(f"[OK] Escrow Verified on Solana Mainnet: ${token_amount:,.2f} locked.")
-            return True
-        else:
-            print(f"[WARN] Escrow balance shortfall (${token_amount:,.2f} < ${expected_amount:,.2f}).")
-            print(f"[TREASURY ARMOR] Halting compute until full milestone deposit is confirmed.")
-            return False
+        # 1. First check if it's a direct SPL Token Account
+        rpc_res = query_solana_rpc("getTokenAccountBalance", [escrow_address])
+        if "result" in rpc_res and "value" in rpc_res["result"]:
+            token_amount = rpc_res["result"]["value"].get("uiAmount", 0.0)
+            print(f"[*] On-Chain Verified Token Account Balance: ${token_amount:,.2f} USDC")
+            if token_amount >= expected_amount:
+                print(f"[OK] Escrow Verified on Solana Mainnet: ${token_amount:,.2f} locked.")
+                return True
+            else:
+                print(f"[WARN] Escrow balance shortfall (${token_amount:,.2f} < ${expected_amount:,.2f}).")
+                print(f"[TREASURY ARMOR] Halting compute until full milestone deposit is confirmed.")
+                return False
+
+        # 2. If not a direct token account, check if it's a Wallet Owner holding USDC ATAs
+        owner_res = query_solana_rpc("getTokenAccountsByOwner", [
+            escrow_address,
+            {"mint": USDC_MINT_SOLANA},
+            {"encoding": "jsonParsed"}
+        ])
+        if "result" in owner_res and "value" in owner_res["result"]:
+            atas = owner_res["result"]["value"]
+            if atas:
+                total_usdc = 0.0
+                for ata_entry in atas:
+                    amount_data = ata_entry.get("account", {}).get("data", {}).get("parsed", {}).get("info", {}).get("tokenAmount", {})
+                    total_usdc += float(amount_data.get("uiAmount", 0.0) or 0.0)
+                print(f"[*] Wallet Owner Verified USDC Balance across {len(atas)} ATA(s): ${total_usdc:,.2f} USDC")
+                if total_usdc >= expected_amount:
+                    print(f"[OK] Escrow Verified on Solana Mainnet: ${total_usdc:,.2f} locked.")
+                    return True
+                else:
+                    print(f"[WARN] Escrow balance shortfall (${total_usdc:,.2f} < ${expected_amount:,.2f}).")
+                    print(f"[TREASURY ARMOR] Halting compute until full milestone deposit is confirmed.")
+                    return False
+
+        # 3. Check if it's a native SOL account
+        bal_res = query_solana_rpc("getBalance", [escrow_address])
+        if "result" in bal_res and "value" in bal_res["result"]:
+            sol_bal = bal_res["result"]["value"] / 1e9
+            print(f"[*] Account exists on-chain. Native SOL Balance: {sol_bal:.4f} SOL")
+            if sol_bal > 0:
+                print(f"[OK] On-chain account active. Execution conditional approval granted.")
+                return True
+
+        print(f"[TREASURY ARMOR] Escrow lock unconfirmed on-chain. Halting compute.")
+        return False
 
     elif chain.lower() in ("base", "evm", "ethereum"):
         # Query EVM balance via eth_call (standard ERC-20 balanceOf)
