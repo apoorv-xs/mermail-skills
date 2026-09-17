@@ -162,8 +162,8 @@ def parse_bounty_from_text(text: str, subject: str = "") -> dict:
     token = "USDC"
     contract = None
 
-    usd_match = re.search(r'\$\s*([0-9,]+(?:\.[0-9]{2})?)', combined)
-    usdc_match = re.search(r'([0-9,]+(?:\.[0-9]{2})?)\s*(?:USDC|SOL|USD)', combined, re.IGNORECASE)
+    usd_match = re.search(r'\$\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]+(?:\.[0-9]+)?)', combined)
+    usdc_match = re.search(r'\b([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|[0-9]+(?:\.[0-9]+)?)\s*(?:USDC|SOL|USD)\b', combined, re.IGNORECASE)
     if usd_match:
         reward = float(usd_match.group(1).replace(",", ""))
     elif usdc_match:
