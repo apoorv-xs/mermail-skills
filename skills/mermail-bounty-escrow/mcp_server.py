@@ -259,9 +259,18 @@ def mermail_verify_escrow(escrow_address: str, expected_amount: float, chain: st
     }, indent=2)
 
 @mcp.tool()
-def mermail_send_email(to: str, subject: str, body: str, mailboxId: str = None) -> str:
-    """Dispatch RFC-compliant email and escrow claim via Mermail gateway."""
+def mermail_send_email(to: str, subject: str, body: str, mailboxId: str = None, dry_run: bool = True) -> str:
+    """Dispatch RFC-compliant email and escrow claim via Mermail gateway (defaults to dry_run preview)."""
     active_mailbox = _resolve_mailbox(mailboxId)
+    if dry_run:
+        return json.dumps({
+            "status": "dry_run_preview",
+            "message": "Email preview verified without dispatch. To send live, pass dry_run=False.",
+            "sender": active_mailbox,
+            "recipient": to,
+            "subject": subject
+        }, indent=2)
+
     res = _query_mermail_gateway("send_email", {
         "mailboxId": active_mailbox,
         "body": {

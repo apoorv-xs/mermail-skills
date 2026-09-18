@@ -1,0 +1,15 @@
+From: bounties@superteam.fun
+Subject: AWARD NOTICE: Superteam Earn - Build and Demo a Mermail Agent Skill
+Date: Fri, 18 Sep 2026 00:00:00 +0000
+
+Dear Engineer,
+
+Congratulations! Your proposal for "Build and Demo a Mermail Agent Skill" has been accepted.
+Milestone Reward: .00 USDC
+Escrow Deposit Status: Confirmed locked on-chain.
+Solana Escrow Account: 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
+
+Please compile the milestone deliverables and dispatch your completion receipt upon final verification.
+
+Best regards,
+Superteam Earn Bounty Operations

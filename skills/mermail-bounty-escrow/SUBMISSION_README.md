@@ -6,7 +6,8 @@
 > **Architect & Submitter:** Apoorv A S ([@apoorv_xs](https://x.com/apoorv_xs) · [@apoorv-xs](https://github.com/apoorv-xs))  
 > **Role:** Creative Technologist & 3D WebUI Architect | Creator, ERAVEX (Spatial Computing & WebGPU Engine)  
 > **Portfolio:** [https://apoorv.qzz.io](https://apoorv.qzz.io)  
-> **Repository Core:** `B:\vault\mermail-skill\` (ERAVEX Vault)
+> **Repository Core:** `https://github.com/apoorv-xs/mermail-skills` (Fork of `Nudgen-Marketing/mermail-skills`)  
+> **Local Workspace:** `B:\vault\mermail-skills-repo\`
 
 ---
 
@@ -115,8 +116,8 @@ python mermail_bounty_escrow.py --action demo
 [+] Compiling Tamper-Evident Deliverable Manifest
 [*] Target Directory: .
 [*] Deal Reference:  SUPERTEAM-MERMAIL-500
-[OK] Manifest generated: 9 files verified.
-[OK] Composite Merkle Root SHA-256: ee5eb28f1e5517a6e22f1516b9363a59d5c1122da06629a0c9a60dd1ea61edd0
+[OK] Manifest generated: 10 files verified.
+[OK] Composite Merkle Root SHA-256: 916db7d1108b6b57f4223110d25482829dc4cd0ddc203adabc8a0ea712940f3e
 [OK] Saved receipt manifest to: .\DELIVERY_MANIFEST.json
 
 >>> STEP 4: DISPATCH MERMAIL DELIVERY NOTICE (PREVIEW/DRY-RUN)
@@ -135,9 +136,9 @@ PROVENANCE & INTEGRITY MANIFEST:
 --------------------------------------------------------------------------------
 Agent Mailbox Identity:   agent@mermail.me
 Agent Settlement Wallet:  WALLET_NOT_CONFIGURED
-Composite Root SHA-256:   ee5eb28f1e5517a6e22f1516b9363a59d5c1122da06629a0c9a60dd1ea61edd0
-Timestamp (UTC):          2026-09-18T00:14:37.695561+00:00
-Total Verified Files:     9
+Composite Root SHA-256:   916db7d1108b6b57f4223110d25482829dc4cd0ddc203adabc8a0ea712940f3e
+Timestamp (UTC):          2026-09-18T00:22:09.198165+00:00
+Total Verified Files:     10
 --------------------------------------------------------------------------------
 
 DELIVERABLE ASSETS:
@@ -185,11 +186,11 @@ python mermail_bounty_escrow.py --action dispatch --deal-id SUPERTEAM-MERMAIL-SK
 
 ## 6. Official Superteam Submission Checklist
 
-- **Skill Specification:** [`SKILL.md`](file:///skills/mermail-bounty-escrow/SKILL.md) (Standard Mermail skill format with `metadata.openclaw`, `references/tools.md`, `references/workflows.md`, and `references/security.md`)
+- **Skill Specification:** [`SKILL.md`](SKILL.md) (Standard Mermail skill format with `metadata.openclaw`, `references/tools.md`, `references/workflows.md`, and `references/security.md`)
 - **Target Repository:** [Nudgen-Marketing/mermail-skills](https://github.com/Nudgen-Marketing/mermail-skills)
 - **AI Client Used:** Gemini Pro / Antigravity Agent Runtime + FastMCP
 - **Demo Command:** `python mermail_bounty_escrow.py --action demo --target-dir .`
-- **Verification Hash:** [`DELIVERY_MANIFEST.json`](file:///skills/mermail-bounty-escrow/DELIVERY_MANIFEST.json) (Composite Merkle Root: `ee5eb28f1e5517a6e22f1516b9363a59d5c1122da06629a0c9a60dd1ea61edd0`)
+- **Verification Hash:** [`DELIVERY_MANIFEST.json`](DELIVERY_MANIFEST.json) (Composite Merkle Root: `916db7d1108b6b57f4223110d25482829dc4cd0ddc203adabc8a0ea712940f3e`)
 - **Creator / Architect:** Apoorv A S ([@apoorv_xs](https://x.com/apoorv_xs))
 - **Settlement Wallet:** Dynamic (Configured via `--wallet` or `AGENT_WALLET_ADDRESS`)
 

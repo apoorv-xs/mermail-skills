@@ -259,20 +259,32 @@ def action_scan(mailbox: str = DEFAULT_MAILBOX, sample_file: str = None) -> list
             return []
         
         items = res.get("structuredContent", {}).get("items", [])
+        TRUSTED_SPONSOR_DOMAINS = ("superteam.fun", "solana.org", "base.org", "ethereum.org", "mermail.app")
         for item in items:
             body_text = item.get("body", "") or item.get("snippet", "")
             parsed = parse_bounty_from_text(body_text, item.get("subject", ""))
+            
+            # Security Rule (B4): Inbound mail cannot arbitrarily command payout or audit bindings
+            sender = item.get("sender", "").lower()
+            auth_info = item.get("sender_authentication", {})
+            auth_status = auth_info.get("status") if isinstance(auth_info, dict) else "unknown"
+            
+            is_trusted_sender = any(sender.endswith(f"@{domain}") or f"<{domain}>" in sender for domain in TRUSTED_SPONSOR_DOMAINS)
+            is_authenticated = (auth_status == "pass") or is_trusted_sender
+            
             # Flag messages that describe bounties, RFPs, or compensation
             if parsed["reward_amount"] > 0 or parsed["is_escrow_mentioned"]:
                 inbox.append({
                     "id": item.get("id"),
                     "sender": item.get("sender"),
+                    "sender_authenticated": is_authenticated,
                     "subject": item.get("subject"),
                     "date": item.get("date"),
                     "body": body_text,
                     "reward_amount": parsed["reward_amount"],
                     "token": parsed["token"],
-                    "escrow_address": parsed["escrow_address"]
+                    "escrow_address": parsed["escrow_address"] if is_authenticated else None,
+                    "unbound_escrow_candidate": parsed["escrow_address"] if not is_authenticated else None
                 })
 
     if not inbox:
@@ -305,20 +317,25 @@ def action_verify_escrow(escrow_address: str, expected_amount: float, chain: str
         return False
 
     if chain.lower() == "solana":
-        USDC_MINT_SOLANA = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-        
-        # 1. Direct SPL Token Account check
-        rpc_res = query_solana_rpc("getTokenAccountBalance", [escrow_address])
-        if "result" in rpc_res and "value" in rpc_res["result"]:
-            token_amount = rpc_res["result"]["value"].get("uiAmount", 0.0)
-            print(f"[*] On-Chain Verified Token Account Balance: ${token_amount:,.2f} USDC")
-            if token_amount >= expected_amount:
-                print(f"[OK] Counterparty Funding Verified on Solana Mainnet: ${token_amount:,.2f} available.")
-                return True
-            else:
-                print(f"[WARN] Balance shortfall (${token_amount:,.2f} < ${expected_amount:,.2f}).")
-                print(f"[TREASURY ARMOR] Halting compute until full milestone deposit is confirmed.")
-                return False
+        # 1. Direct SPL Token Account check with verified mint validation
+        acc_info = query_solana_rpc("getAccountInfo", [escrow_address, {"encoding": "jsonParsed"}])
+        if "result" in acc_info and acc_info["result"] and "value" in acc_info["result"]:
+            parsed_data = acc_info["result"]["value"].get("data", {}).get("parsed", {})
+            if parsed_data.get("type") == "account":
+                info = parsed_data.get("info", {})
+                account_mint = info.get("mint")
+                if account_mint != USDC_MINT_SOLANA:
+                    print(f"[WARN] Account mint '{account_mint}' is not official Solana USDC ('{USDC_MINT_SOLANA}'). Rejected.")
+                else:
+                    token_amount = float(info.get("tokenAmount", {}).get("uiAmount", 0.0) or 0.0)
+                    print(f"[*] On-Chain Verified USDC Token Account Balance: ${token_amount:,.2f} USDC")
+                    if token_amount >= expected_amount:
+                        print(f"[OK] Counterparty Funding Verified on Solana Mainnet: ${token_amount:,.2f} USDC available.")
+                        return True
+                    else:
+                        print(f"[WARN] Balance shortfall (${token_amount:,.2f} < ${expected_amount:,.2f}).")
+                        print(f"[TREASURY ARMOR] Halting compute until full milestone deposit is confirmed.")
+                        return False
 
         # 2. Check if it's a Wallet Owner holding USDC ATAs
         owner_res = query_solana_rpc("getTokenAccountsByOwner", [
@@ -488,7 +505,7 @@ Respectfully,
         print(f"     Note: Message is in Mermail '{status}' state. Final delivery confirmed once undo window closes.")
     return email_body
 
-def action_demo(target_dir: str, deal_id: str, escrow_address: str = None, amount: float = 500.0, chain: str = "base", wallet: str = None, mailbox: str = None):
+def action_demo(target_dir: str, deal_id: str, escrow_address: str = None, amount: float = 500.0, chain: str = None, wallet: str = None, mailbox: str = None):
     """Runs a verified demonstration cycle enforcing Treasury Armor halts if unverified."""
     active_mb = resolve_agent_mailbox(mailbox)
     resolved_w = resolve_agent_wallet(wallet)
@@ -500,10 +517,8 @@ def action_demo(target_dir: str, deal_id: str, escrow_address: str = None, amoun
     # Default demo target: Verified funded Base USDC address ($79k+ on-chain)
     target_escrow = escrow_address or "0x3304E22DDaa22bCdC5fCa2269b418046aE7b566A"
     
-    # Auto-detect chain if user didn't specify and default 0x address is used
-    effective_chain = chain
-    if target_escrow.startswith("0x") and chain == "solana":
-        effective_chain = "base"
+    # Auto-detect chain if user didn't specify
+    effective_chain = chain or ("base" if target_escrow.startswith("0x") else "solana")
         
     is_funded = action_verify_escrow(target_escrow, amount, chain=effective_chain)
     
@@ -535,7 +550,7 @@ if __name__ == "__main__":
     parser.add_argument("--deal-id", default="SUPERTEAM-MERMAIL-500", help="Deal reference identifier")
     parser.add_argument("--amount", type=float, default=500.0, help="Expected milestone escrow amount in USDC")
     parser.add_argument("--escrow-address", help="On-chain escrow contract or token account address to audit")
-    parser.add_argument("--chain", default="solana", choices=["solana", "base"], help="Target blockchain for escrow audit")
+    parser.add_argument("--chain", default=None, choices=["solana", "base"], help="Target blockchain for escrow audit")
     parser.add_argument("--target-dir", default=".", help="Target directory to compute integrity manifest")
     parser.add_argument("--recipient", default="bounties@superteam.fun", help="Recipient email address")
     parser.add_argument("--wallet", help="Agent settlement wallet address (overrides default/env)")
@@ -553,7 +568,8 @@ if __name__ == "__main__":
         if not args.escrow_address:
             print("[!] Error: --escrow-address is required for real on-chain escrow verification.")
             sys.exit(1)
-        action_verify_escrow(args.escrow_address, args.amount, chain=args.chain)
+        effective_chain = args.chain or ("base" if args.escrow_address.startswith("0x") else "solana")
+        action_verify_escrow(args.escrow_address, args.amount, chain=effective_chain)
     elif args.action == "deliver":
         action_deliver(args.target_dir, args.deal_id, wallet=args.wallet)
     elif args.action == "dispatch":

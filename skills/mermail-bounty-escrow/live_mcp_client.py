@@ -76,12 +76,13 @@ async def run_live_mcp_client():
             print(escrow_res.content[0].text)
             time.sleep(1.0)
 
-            # 5. Call mermail_send_email with honest status return
-            stream("\n>>> [4/4] FAST-MCP CALL: mermail_send_email(to='bounties@superteam.fun')")
+            # 5. Call mermail_send_email with honest status return (guarded dry_run preview)
+            stream("\n>>> [4/4] FAST-MCP CALL: mermail_send_email(to='bounties@superteam.fun', dry_run=True)")
             email_res = await session.call_tool("mermail_send_email", {
                 "to": "bounties@superteam.fun",
                 "subject": "MILESTONE DELIVERED // VERIFIED-POW",
-                "body": "Delivery sealed with SHA-256 integrity manifest."
+                "body": "Delivery sealed with SHA-256 integrity manifest.",
+                "dry_run": True
             })
             print(email_res.content[0].text)
             time.sleep(1.0)
