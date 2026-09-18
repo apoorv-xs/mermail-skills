@@ -61,7 +61,7 @@ Read [tools.md](references/tools.md) for the official Mermail tool contracts and
 
 ## Example Requests
 
-- "Check my Mermail inbox for active Superteam bounties using list_emails and verify if any have locked escrow on-chain."
-- "Audit escrow for deal MSG-9042 with contract 0x94B0...e81A on Base RPC. If 500 USDC is locked, proceed to compile and hash the deliverable package."
+- "Check my Mermail inbox for active Superteam bounties using list_emails and audit counterparty on-chain funding."
+- "Audit solvency for deal MSG-9042 with contract/address 0x94B0...e81A on Base RPC. If 500 USDC is verified, proceed to compile and hash the deliverable package."
 - "Seal the build artifacts in `./skills/mermail-bounty-escrow/` into DELIVERY_MANIFEST.json and email the proof to bounties@superteam.fun via send_email."
 - "A client inquired about a 3D WebGPU refactor without deposit. Halt compute and draft standard 50% upfront milestone terms."

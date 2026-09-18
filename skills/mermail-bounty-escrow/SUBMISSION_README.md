@@ -16,11 +16,11 @@
 AI agents today can write code, generate 3D assets, and solve engineering challenges. However, when interfacing with clients or bounty programs, they face two critical bottlenecks:
 
 1. **No Institutional Email Presence:** Clients and sponsors communicate via RFC-compliant email, not ephemeral terminal outputs or Discord DMs.
-2. **The "Unfunded Compute" Vulnerability:** Agents risk burning GPU compute, API calls, and developer time on unvetted requests that lack locked escrow.
+2. **The "Unfunded Compute" Vulnerability:** Agents risk burning GPU compute, API calls, and developer time on unvetted requests that lack verified funding or deposit.
 
 **`mermail-bounty-escrow`** bridges Mermail's native email identity (`agent@mermail.me`) and Agent Wallet (Solana / Base) to create an end-to-end autonomous bounty settlement loop.
 
-The agent monitors its Mermail inbox for inbound RFPs, verifies on-chain counterparty escrow or token approval before initiating heavy compute, signs an immutable SHA-256 deliverable manifest, and dispatches a cryptographic milestone release receipt directly back to the sponsor.
+The agent monitors its Mermail inbox for inbound RFPs, verifies on-chain counterparty token balance or escrow funding before initiating heavy compute, signs an immutable SHA-256 deliverable manifest, and dispatches a cryptographic milestone release receipt directly back to the sponsor.
 
 ---
 
@@ -41,8 +41,8 @@ The agent monitors its Mermail inbox for inbound RFPs, verifies on-chain counter
 |  [ Step A: RFP NLP Parsing ]                                |
 |    - Extracts bounty scope, compensation, & deadline        |
 |                                                             |
-|  [ Step B: Agent Wallet Escrow Audit ]                      |
-|    - Queries Solana / Base smart contract for locked escrow |
+|  [ Step B: Agent Wallet Solvency & Funding Audit ]          |
+|    - Queries Solana / Base smart contract for deposit balance|
 |    - If unfunded: automatically halts and sends SOW terms   |
 |                                                             |
 |  [ Step C: Cryptographic Proof of Work ]                    |
@@ -51,12 +51,12 @@ The agent monitors its Mermail inbox for inbound RFPs, verifies on-chain counter
 |                                                             |
 |  [ Step D: Milestone Release Dispatch ]                     |
 |    - Drafts & dispatches RFC delivery receipt via Mermail   |
-|    - Requests automated on-chain escrow release             |
+|    - Requests automated milestone settlement release        |
 +-------------------------------------------------------------+
             |
-            | 3. Outbound Proof-of-Work Receipt + Escrow Claim
+            | 3. Outbound Proof-of-Work Receipt + Settlement Claim
             v
-   [ Client / Sponsor Inbox & Smart Contract Release ]
+   [ Client / Sponsor Inbox & Settlement Release ]
 ```
 
 ---
@@ -117,7 +117,7 @@ python mermail_bounty_escrow.py --action demo
 [*] Target Directory: .
 [*] Deal Reference:  SUPERTEAM-MERMAIL-500
 [OK] Manifest generated: 10 files verified.
-[OK] Canonical Composite Root SHA-256: 6526dad132f1ae092765425552728efcfd36579f8eadfd4be59b0c52c6b691dd
+[OK] Canonical Composite Root SHA-256: b830abdf269b5c87c5f8b193e171031ba58e0b5c52eede28ca4cc307ae53b1a6
 [OK] Saved receipt manifest to: .\DELIVERY_MANIFEST.json
 
 >>> STEP 4: DISPATCH MERMAIL DELIVERY NOTICE (PREVIEW/DRY-RUN)
@@ -136,8 +136,8 @@ PROVENANCE & INTEGRITY MANIFEST:
 --------------------------------------------------------------------------------
 Agent Mailbox Identity:   UNCONFIGURED_MAILBOX
 Agent Settlement Wallet:  WALLET_NOT_CONFIGURED
-Composite Root SHA-256:   6526dad132f1ae092765425552728efcfd36579f8eadfd4be59b0c52c6b691dd
-Timestamp (UTC):          2026-09-18T02:25:37.480438+00:00
+Composite Root SHA-256:   b830abdf269b5c87c5f8b193e171031ba58e0b5c52eede28ca4cc307ae53b1a6
+Timestamp (UTC):          2026-09-18T02:33:01.520240+00:00
 Total Verified Files:     10
 --------------------------------------------------------------------------------
 
@@ -190,7 +190,7 @@ python mermail_bounty_escrow.py --action dispatch --deal-id SUPERTEAM-MERMAIL-SK
 - **Target Repository:** [Nudgen-Marketing/mermail-skills](https://github.com/Nudgen-Marketing/mermail-skills)
 - **AI Client Used:** Gemini Pro / Antigravity Agent Runtime + FastMCP
 - **Demo Command:** `python mermail_bounty_escrow.py --action demo --target-dir .`
-- **Verification Hash:** [`DELIVERY_MANIFEST.json`](DELIVERY_MANIFEST.json) (Canonical Composite Root: `6526dad132f1ae092765425552728efcfd36579f8eadfd4be59b0c52c6b691dd`)
+- **Verification Hash:** [`DELIVERY_MANIFEST.json`](DELIVERY_MANIFEST.json) (Canonical Composite Root: `b830abdf269b5c87c5f8b193e171031ba58e0b5c52eede28ca4cc307ae53b1a6`)
 - **Creator / Architect:** Apoorv A S ([@apoorv_xs](https://x.com/apoorv_xs))
 - **Settlement Wallet:** Dynamic (Configured via `--wallet` or `AGENT_WALLET_ADDRESS`)
 

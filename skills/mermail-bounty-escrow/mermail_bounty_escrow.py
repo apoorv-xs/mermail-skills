@@ -273,7 +273,7 @@ def action_scan(mailbox: str = None, sample_file: str = None) -> list:
         })
     else:
         print(f"[*] Querying live hosted Mermail MCP gateway: {DEFAULT_ENDPOINT}")
-        res = query_live_mermail_mcp("list_emails", {"mailboxId": mailbox})
+        res = query_live_mermail_mcp("list_emails", {"mailboxId": active_mb})
         if "error" in res or res.get("isError"):
             err_msg = res.get("error", "Unknown gateway error")
             print(f"[!] Live Mermail API Response: {err_msg}")
@@ -422,7 +422,7 @@ def action_verify_escrow(escrow_address: str, expected_amount: float, chain: str
 def action_deliver(target_dir: str, deal_id: str, wallet: str = None, mailbox: str = None) -> dict:
     """Compiles an immutable SHA-256 deliverable integrity manifest."""
     resolved_wallet = resolve_agent_wallet(wallet)
-    resolved_mailbox = resolve_agent_mailbox(mailbox) or "WALLET_NOT_CONFIGURED"
+    resolved_mailbox = resolve_agent_mailbox(mailbox) or "UNCONFIGURED_MAILBOX"
     print(f"\n[+] Compiling Tamper-Evident Deliverable Manifest")
     print(f"[*] Target Directory: {target_dir}")
     print(f"[*] Deal Reference:  {deal_id}")
