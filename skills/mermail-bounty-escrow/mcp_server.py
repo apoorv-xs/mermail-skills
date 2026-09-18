@@ -23,6 +23,23 @@ BASE_RPC_URL = os.environ.get("BASE_RPC_URL", "https://mainnet.base.org")
 def _get_api_key():
     return os.environ.get("MERMAIL_API_KEY", "")
 
+def _fetch_live_sol_price() -> float:
+    endpoints = [
+        ("https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT", lambda d: float(d["price"])),
+        ("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd", lambda d: float(d["solana"]["usd"]))
+    ]
+    for url, parser in endpoints:
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                price = parser(data)
+                if price > 0:
+                    return price
+        except Exception:
+            continue
+    return 100.0
+
 def _resolve_wallet(override_wallet: str = None) -> str:
     if override_wallet and override_wallet.strip():
         return override_wallet.strip()
@@ -47,7 +64,7 @@ def _resolve_mailbox(override_mailbox: str = None) -> str:
                 return primary.get("public_id") or primary.get("email") or ""
         except Exception:
             pass
-    return "agent@mermail.me"
+    return ""
 
 def _query_mermail_gateway(tool_name: str, args: dict):
     req_body = {
@@ -192,16 +209,25 @@ def mermail_verify_escrow(escrow_address: str, expected_amount: float, chain: st
             if parsed_data.get("type") == "account":
                 info = parsed_data.get("info", {})
                 account_mint = info.get("mint")
-                if account_mint == USDC_MINT:
-                    token_amount = float(info.get("tokenAmount", {}).get("uiAmount", 0.0) or 0.0)
-                    if token_amount >= expected_amount:
-                        return json.dumps({
-                            "escrow_address": escrow_address,
-                            "chain": "solana",
-                            "verified": True,
-                            "locked_usdc_balance": token_amount,
-                            "action": "PROCEED_WITH_EXECUTION"
-                        }, indent=2)
+                if account_mint != USDC_MINT:
+                    return json.dumps({
+                        "escrow_address": escrow_address,
+                        "chain": "solana",
+                        "verified": False,
+                        "action": "HALT_UNFUNDED_COMPUTE",
+                        "reason": f"Token account mint mismatch: '{account_mint}' != official USDC '{USDC_MINT}'"
+                    }, indent=2)
+                
+                token_amount = float(info.get("tokenAmount", {}).get("uiAmount", 0.0) or 0.0)
+                if token_amount >= expected_amount:
+                    return json.dumps({
+                        "escrow_address": escrow_address,
+                        "chain": "solana",
+                        "verified": True,
+                        "solvency_verified": True,
+                        "locked_usdc_balance": token_amount,
+                        "action": "PROCEED_WITH_EXECUTION"
+                    }, indent=2)
 
         # 2. Check if it's a Wallet Owner address holding USDC ATA(s)
         owner_res = _query_solana_rpc("getTokenAccountsByOwner", [
@@ -218,12 +244,14 @@ def mermail_verify_escrow(escrow_address: str, expected_amount: float, chain: st
                         "escrow_address": escrow_address,
                         "chain": "solana",
                         "verified": True,
+                        "solvency_verified": True,
                         "locked_usdc_balance": total_usdc,
                         "action": "PROCEED_WITH_EXECUTION"
                     }, indent=2)
 
         # 3. Check native SOL balance against USD equivalent (zero dust approvals)
-        min_sol_required = expected_amount / 150.0  # Conservative $150/SOL benchmark
+        live_sol_price = _fetch_live_sol_price()
+        min_sol_required = expected_amount / live_sol_price
         bal_res = _query_solana_rpc("getBalance", [escrow_address])
         if "result" in bal_res and "value" in bal_res["result"]:
             sol_bal = bal_res["result"]["value"] / 1e9
@@ -232,7 +260,9 @@ def mermail_verify_escrow(escrow_address: str, expected_amount: float, chain: st
                     "escrow_address": escrow_address,
                     "chain": "solana",
                     "verified": True,
+                    "solvency_verified": True,
                     "native_sol_balance": sol_bal,
+                    "sol_price_usd": live_sol_price,
                     "action": "PROCEED_WITH_EXECUTION"
                 }, indent=2)
 
@@ -272,7 +302,15 @@ def mermail_send_email(to: str, subject: str, body: str, mailboxId: str = None, 
         return json.dumps({
             "status": "dry_run_preview",
             "message": "Email preview verified without dispatch. To send live, pass dry_run=False.",
-            "sender": active_mailbox,
+            "sender": active_mailbox or "UNRESOLVED_MAILBOX",
+            "recipient": to,
+            "subject": subject
+        }, indent=2)
+
+    if not active_mailbox:
+        return json.dumps({
+            "status": "error",
+            "reason": "Unresolved sender mailbox. Cannot send live email without active mailbox ID or MERMAIL_MAILBOX_ID.",
             "recipient": to,
             "subject": subject
         }, indent=2)

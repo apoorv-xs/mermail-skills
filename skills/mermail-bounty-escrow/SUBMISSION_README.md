@@ -64,9 +64,9 @@ The agent monitors its Mermail inbox for inbound RFPs, verifies on-chain counter
 ## 3. Key Capabilities & Features
 
 - **Autonomous Email Triaging:** Filters noise and identifies high-value bounty opportunities and milestones in real-time.
-- **Autonomous Treasury Armor (Hard Execution Gate):** Enforces a strict zero-unfunded-compute policy. If a client has not deposited milestone funds, the agent halts compute immediately. Escrow is audited directly via public blockchain RPCs (`api.mainnet-beta.solana.com` or `mainnet.base.org`).
-- **Programmatic Enforcement vs. Prompt Scaffolding:** Unlike skills that attempt to prevent unauthorized agent behavior through prompt-based prohibitions ("do not execute unvetted tasks")—which suffer from prohibition saturation and prompt injection—`mermail-bounty-escrow` moves the security boundary into **real programmatic Python RPC execution gates**. Compute is mathematically blocked until confirmed by public blockchain JSON-RPC.
-- **Tamper-Evident Delivery Manifests:** Traverses complex project directories (GLSL shaders, Three.js repos, compiled binaries) and generates an immutable composite root SHA-256 integrity hash proof.
+- **Autonomous Treasury Armor (Programmatic Execution Gate):** Enforces a strict zero-unfunded-compute policy. Before allocating compute or compiling deliverables, the agent audits counterparty on-chain token balance or escrow solvency. Counterparty funding is audited directly via public blockchain RPCs (`api.mainnet-beta.solana.com` or `mainnet.base.org`).
+- **Programmatic Enforcement vs. Prompt Scaffolding:** Unlike skills that attempt to prevent unauthorized agent behavior through prompt-based prohibitions ("do not execute unvetted tasks")—which suffer from prohibition saturation and prompt injection—`mermail-bounty-escrow` moves the security boundary into **real programmatic Python RPC execution gates**. When executed through the pipeline, milestone compilation and dispatch require verified counterparty solvency.
+- **Tamper-Evident Delivery Manifests:** Traverses complex project directories (GLSL shaders, Three.js repos, compiled binaries) and generates an immutable canonical composite root SHA-256 integrity hash proof.
 - **Dual Runtime Support:** Operates seamlessly with live `mermail-mcp`, direct Python FastMCP, and local CLI environments with dynamic wallet configuration (`--wallet`, `AGENT_WALLET_ADDRESS`).
 
 ---
@@ -98,16 +98,16 @@ python mermail_bounty_escrow.py --action demo
 
 >>> STEP 1: SCAN INCOMING BOUNTY RFPs VIA MERMAIL
 
-[+] Scanning Mermail Agent Inbox: agent@mermail.me ...
+[+] Scanning Mermail Agent Inbox: (unconfigured / live inquiry required) ...
 [*] Querying live hosted Mermail MCP gateway: https://console.mermail.app/mcp
 [!] Live Mermail API Response: HTTP Error 401: Unauthorized
 
 >>> STEP 2: AUDIT COUNTERPARTY ON-CHAIN ESCROW (TREASURY ARMOR)
 
-[+] Auditing Counterparty On-Chain Solvency / Escrow Lock...
-[*] Target Escrow Address: 0x3304E22DDaa22bCdC5fCa2269b418046aE7b566A
-[*] Expected Amount:       $500.00 USDC
-[*] Network:               BASE
+[+] Auditing Counterparty On-Chain Solvency / Escrow Balance...
+[*] Target Escrow/Wallet Address: 0x3304E22DDaa22bCdC5fCa2269b418046aE7b566A
+[*] Expected Amount:             $500.00 USDC
+[*] Network:                     BASE
 [*] On-Chain Verified Base USDC Balance: $79,178.60
 [OK] Counterparty Funding Verified on Base Mainnet: $79,178.60 available.
 
@@ -117,13 +117,13 @@ python mermail_bounty_escrow.py --action demo
 [*] Target Directory: .
 [*] Deal Reference:  SUPERTEAM-MERMAIL-500
 [OK] Manifest generated: 10 files verified.
-[OK] Composite Merkle Root SHA-256: 916db7d1108b6b57f4223110d25482829dc4cd0ddc203adabc8a0ea712940f3e
+[OK] Canonical Composite Root SHA-256: 6526dad132f1ae092765425552728efcfd36579f8eadfd4be59b0c52c6b691dd
 [OK] Saved receipt manifest to: .\DELIVERY_MANIFEST.json
 
 >>> STEP 4: DISPATCH MERMAIL DELIVERY NOTICE (PREVIEW/DRY-RUN)
 
 [+] Composing Milestone Delivery Receipt for Mermail Gateway
-[*] Sender Mailbox: agent@mermail.me
+[*] Sender Mailbox: (unconfigured / live inquiry required)
 [*] Recipient:      bounties@superteam.fun
 [*] Deal:           SUPERTEAM-MERMAIL-500
 
@@ -134,10 +134,10 @@ Milestone Delivery for [SUPERTEAM-MERMAIL-500] has been finalized and compiled.
 
 PROVENANCE & INTEGRITY MANIFEST:
 --------------------------------------------------------------------------------
-Agent Mailbox Identity:   agent@mermail.me
+Agent Mailbox Identity:   UNCONFIGURED_MAILBOX
 Agent Settlement Wallet:  WALLET_NOT_CONFIGURED
-Composite Root SHA-256:   916db7d1108b6b57f4223110d25482829dc4cd0ddc203adabc8a0ea712940f3e
-Timestamp (UTC):          2026-09-18T00:22:09.198165+00:00
+Composite Root SHA-256:   6526dad132f1ae092765425552728efcfd36579f8eadfd4be59b0c52c6b691dd
+Timestamp (UTC):          2026-09-18T02:25:37.480438+00:00
 Total Verified Files:     10
 --------------------------------------------------------------------------------
 
@@ -190,7 +190,7 @@ python mermail_bounty_escrow.py --action dispatch --deal-id SUPERTEAM-MERMAIL-SK
 - **Target Repository:** [Nudgen-Marketing/mermail-skills](https://github.com/Nudgen-Marketing/mermail-skills)
 - **AI Client Used:** Gemini Pro / Antigravity Agent Runtime + FastMCP
 - **Demo Command:** `python mermail_bounty_escrow.py --action demo --target-dir .`
-- **Verification Hash:** [`DELIVERY_MANIFEST.json`](DELIVERY_MANIFEST.json) (Composite Merkle Root: `81fd21e25547c76be2ebb9d0e82d2e6503d11b800c14f1d334e71b89de4eb64f`)
+- **Verification Hash:** [`DELIVERY_MANIFEST.json`](DELIVERY_MANIFEST.json) (Canonical Composite Root: `6526dad132f1ae092765425552728efcfd36579f8eadfd4be59b0c52c6b691dd`)
 - **Creator / Architect:** Apoorv A S ([@apoorv_xs](https://x.com/apoorv_xs))
 - **Settlement Wallet:** Dynamic (Configured via `--wallet` or `AGENT_WALLET_ADDRESS`)
 

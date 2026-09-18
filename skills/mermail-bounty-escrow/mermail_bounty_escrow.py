@@ -38,6 +38,24 @@ SOLANA_RPC_URL = os.environ.get("SOLANA_RPC_URL", "https://api.mainnet-beta.sola
 BASE_RPC_URL = os.environ.get("BASE_RPC_URL", "https://mainnet.base.org")
 USDC_MINT_SOLANA = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 
+def fetch_live_sol_price() -> float:
+    """Fetches real-time SOL/USD price from public market tickers with safe fallback."""
+    endpoints = [
+        ("https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDT", lambda d: float(d["price"])),
+        ("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd", lambda d: float(d["solana"]["usd"]))
+    ]
+    for url, parser in endpoints:
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                price = parser(data)
+                if price > 0:
+                    return price
+        except Exception:
+            continue
+    return 100.0
+
 def resolve_agent_wallet(explicit_wallet: str = None) -> str:
     """Dynamically resolves agent settlement wallet from flag, env, or prompts if missing."""
     if explicit_wallet and explicit_wallet.strip():
@@ -48,7 +66,7 @@ def resolve_agent_wallet(explicit_wallet: str = None) -> str:
     return "WALLET_NOT_CONFIGURED"
 
 def resolve_agent_mailbox(explicit_mailbox: str = None) -> str:
-    """Dynamically resolves active Mermail mailbox from flag, env, or gateway inquiry."""
+    """Dynamically resolves active Mermail mailbox from flag, env, or gateway inquiry. Returns empty string if unresolved."""
     if explicit_mailbox and explicit_mailbox.strip():
         return explicit_mailbox.strip()
     env_mailbox = os.environ.get("MERMAIL_MAILBOX_ID", "").strip()
@@ -64,7 +82,7 @@ def resolve_agent_mailbox(explicit_mailbox: str = None) -> str:
                 return primary.get("public_id") or primary.get("email") or ""
         except Exception:
             pass
-    return "agent@mermail.me"
+    return ""
 
 
 def query_live_mermail_mcp(tool_name: str, args: dict, endpoint: str = DEFAULT_ENDPOINT, api_key: str = None):
@@ -211,11 +229,11 @@ def hash_directory(target_path: str) -> dict:
         for file in sorted(files):
             if file.startswith(".") or file.endswith(".pyc") or "__pycache__" in root:
                 continue
-            # Exclude self-manifest to keep hash completely deterministic
-            if file in ("DELIVERY_MANIFEST.json", "SUBMISSION_README.md"):
-                continue
             full_p = os.path.join(root, file)
             rel_p = os.path.relpath(full_p, normalized_path).replace("\\", "/")
+            # Exclude self-manifest and submission overview only at root level
+            if rel_p in ("DELIVERY_MANIFEST.json", "SUBMISSION_README.md"):
+                continue
             try:
                 with open(full_p, "rb") as f:
                     manifest[rel_p] = hashlib.sha256(f.read()).hexdigest()
@@ -224,16 +242,18 @@ def hash_directory(target_path: str) -> dict:
     return manifest
 
 def compute_composite_merkle_root(manifest: dict) -> str:
-    """Computes a canonical Merkle-style root hash over sorted relative paths and content hashes."""
+    """Computes a canonical sorted-list composite root SHA-256 hash over relative paths and content hashes."""
     if not manifest or "error" in manifest:
         return hashlib.sha256(b"").hexdigest()
     # Canonical string: sorted newline-delimited 'rel_path:sha256_hash'
     canonical_entries = [f"{k}:{manifest[k]}" for k in sorted(manifest.keys())]
     return hashlib.sha256("\n".join(canonical_entries).encode("utf-8")).hexdigest()
 
-def action_scan(mailbox: str = DEFAULT_MAILBOX, sample_file: str = None) -> list:
+def action_scan(mailbox: str = None, sample_file: str = None) -> list:
     """Scans Mermail agent inbox for incoming bounty announcements and RFPs."""
-    print(f"\n[+] Scanning Mermail Agent Inbox: {mailbox} ...")
+    active_mb = resolve_agent_mailbox(mailbox)
+    display_mb = active_mb if active_mb else "(unconfigured / live inquiry required)"
+    print(f"\n[+] Scanning Mermail Agent Inbox: {display_mb} ...")
     inbox = []
 
     if sample_file and os.path.exists(sample_file):
@@ -302,15 +322,16 @@ def action_scan(mailbox: str = DEFAULT_MAILBOX, sample_file: str = None) -> list
     print("--------------------------------------------------------------------------------\n")
     return inbox
 
-def action_verify_escrow(escrow_address: str, expected_amount: float, chain: str = "solana", sol_price_usd: float = 150.0) -> bool:
-    """Verifies counterparty token balance or escrow vault lock on-chain. Zero dust approvals."""
-    print(f"\n[+] Auditing Counterparty On-Chain Solvency / Escrow Lock...")
-    print(f"[*] Target Escrow Address: {escrow_address}")
-    print(f"[*] Expected Amount:       ${expected_amount:,.2f} USDC")
-    print(f"[*] Network:               {chain.upper()}")
+def action_verify_escrow(escrow_address: str, expected_amount: float, chain: str = "solana", sol_price_usd: float = None) -> bool:
+    """Verifies counterparty on-chain token balance or escrow solvency. Zero dust approvals."""
+    current_sol_price = sol_price_usd or fetch_live_sol_price()
+    print(f"\n[+] Auditing Counterparty On-Chain Solvency / Escrow Balance...")
+    print(f"[*] Target Escrow/Wallet Address: {escrow_address}")
+    print(f"[*] Expected Amount:             ${expected_amount:,.2f} USDC")
+    print(f"[*] Network:                     {chain.upper()}")
 
     if not escrow_address or "..." in escrow_address or len(escrow_address) < 32:
-        print(f"[!] Invalid or abbreviated escrow address: '{escrow_address}'. Cannot verify on-chain.")
+        print(f"[!] Invalid or abbreviated address: '{escrow_address}'. Cannot verify on-chain.")
         print(f"[TREASURY ARMOR] HALTING UNCOMPENSATED COMPUTE.")
         return False
 
@@ -325,17 +346,19 @@ def action_verify_escrow(escrow_address: str, expected_amount: float, chain: str
                 info = parsed_data.get("info", {})
                 account_mint = info.get("mint")
                 if account_mint != USDC_MINT_SOLANA:
-                    print(f"[WARN] Account mint '{account_mint}' is not official Solana USDC ('{USDC_MINT_SOLANA}'). Rejected.")
+                    print(f"[!] HARD REJECTION: Account mint '{account_mint}' is not official Solana USDC ('{USDC_MINT_SOLANA}').")
+                    print(f"[TREASURY ARMOR] Token account mint mismatch. Halting compute.")
+                    return False
+                
+                token_amount = float(info.get("tokenAmount", {}).get("uiAmount", 0.0) or 0.0)
+                print(f"[*] On-Chain Verified USDC Token Account Balance: ${token_amount:,.2f} USDC")
+                if token_amount >= expected_amount:
+                    print(f"[OK] Counterparty Solvency Verified on Solana Mainnet: ${token_amount:,.2f} USDC available.")
+                    return True
                 else:
-                    token_amount = float(info.get("tokenAmount", {}).get("uiAmount", 0.0) or 0.0)
-                    print(f"[*] On-Chain Verified USDC Token Account Balance: ${token_amount:,.2f} USDC")
-                    if token_amount >= expected_amount:
-                        print(f"[OK] Counterparty Funding Verified on Solana Mainnet: ${token_amount:,.2f} USDC available.")
-                        return True
-                    else:
-                        print(f"[WARN] Balance shortfall (${token_amount:,.2f} < ${expected_amount:,.2f}).")
-                        print(f"[TREASURY ARMOR] Halting compute until full milestone deposit is confirmed.")
-                        return False
+                    print(f"[WARN] Balance shortfall (${token_amount:,.2f} < ${expected_amount:,.2f}).")
+                    print(f"[TREASURY ARMOR] Halting compute until full milestone deposit is confirmed.")
+                    return False
 
         # 2. Check if it's a Wallet Owner holding USDC ATAs
         owner_res = query_solana_rpc("getTokenAccountsByOwner", [
@@ -360,7 +383,7 @@ def action_verify_escrow(escrow_address: str, expected_amount: float, chain: str
                     return False
 
         # 3. Check native SOL balance against full USD equivalent value (zero dust loophole)
-        min_sol_required = expected_amount / sol_price_usd
+        min_sol_required = expected_amount / current_sol_price
         bal_res = query_solana_rpc("getBalance", [escrow_address])
         if "result" in bal_res and "value" in bal_res["result"]:
             sol_bal = bal_res["result"]["value"] / 1e9
@@ -396,16 +419,17 @@ def action_verify_escrow(escrow_address: str, expected_amount: float, chain: str
 
     return False
 
-def action_deliver(target_dir: str, deal_id: str, wallet: str = None) -> dict:
+def action_deliver(target_dir: str, deal_id: str, wallet: str = None, mailbox: str = None) -> dict:
     """Compiles an immutable SHA-256 deliverable integrity manifest."""
+    resolved_wallet = resolve_agent_wallet(wallet)
+    resolved_mailbox = resolve_agent_mailbox(mailbox) or "WALLET_NOT_CONFIGURED"
     print(f"\n[+] Compiling Tamper-Evident Deliverable Manifest")
     print(f"[*] Target Directory: {target_dir}")
     print(f"[*] Deal Reference:  {deal_id}")
 
-    resolved_wallet = resolve_agent_wallet(wallet)
     manifest = hash_directory(target_dir)
     if "error" in manifest:
-        print(f"[!] Error: {manifest['error']}")
+        print(f"[!] Error reading directory: {manifest['error']}")
         return None
 
     timestamp = datetime.now(timezone.utc).isoformat()
@@ -415,7 +439,7 @@ def action_deliver(target_dir: str, deal_id: str, wallet: str = None) -> dict:
         "deal_id": deal_id,
         "timestamp_utc": timestamp,
         "composite_sha256": composite_hash,
-        "agent_identity": resolve_agent_mailbox(),
+        "agent_identity": resolved_mailbox,
         "agent_wallet": resolved_wallet,
         "files_count": len(manifest),
         "manifest": manifest
@@ -426,22 +450,23 @@ def action_deliver(target_dir: str, deal_id: str, wallet: str = None) -> dict:
         json.dump(proof_package, f, indent=2)
 
     print(f"[OK] Manifest generated: {len(manifest)} files verified.")
-    print(f"[OK] Composite Merkle Root SHA-256: {composite_hash}")
+    print(f"[OK] Canonical Composite Root SHA-256: {composite_hash}")
     print(f"[OK] Saved receipt manifest to: {proof_path}")
     return proof_package
 
 def action_dispatch_email(deal_id: str, recipient: str, target_dir: str, wallet: str = None, mailbox: str = None, dry_run: bool = False):
     """Composes and dispatches an RFC-compliant delivery receipt through Mermail."""
     active_mailbox = resolve_agent_mailbox(mailbox)
+    display_mb = active_mailbox if active_mailbox else "(unconfigured / live inquiry required)"
     resolved_wallet = resolve_agent_wallet(wallet)
     print(f"\n[+] Composing Milestone Delivery Receipt for Mermail Gateway")
-    print(f"[*] Sender Mailbox: {active_mailbox}")
+    print(f"[*] Sender Mailbox: {display_mb}")
     print(f"[*] Recipient:      {recipient}")
     print(f"[*] Deal:           {deal_id}")
 
     proof_path = os.path.join(target_dir if os.path.isdir(target_dir) else ".", "DELIVERY_MANIFEST.json")
     if not os.path.exists(proof_path):
-        proof = action_deliver(target_dir, deal_id, resolved_wallet)
+        proof = action_deliver(target_dir, deal_id, wallet=resolved_wallet, mailbox=active_mailbox)
     else:
         with open(proof_path, "r", encoding="utf-8") as f:
             proof = json.load(f)
@@ -453,7 +478,7 @@ Milestone Delivery for [{deal_id}] has been finalized and compiled.
 
 PROVENANCE & INTEGRITY MANIFEST:
 --------------------------------------------------------------------------------
-Agent Mailbox Identity:   {active_mailbox}
+Agent Mailbox Identity:   {active_mailbox or 'UNCONFIGURED_MAILBOX'}
 Agent Settlement Wallet:  {resolved_wallet}
 Composite Root SHA-256:   {proof.get('composite_sha256')}
 Timestamp (UTC):          {proof.get('timestamp_utc')}
@@ -478,6 +503,11 @@ Respectfully,
     if dry_run:
         print("[*] Dry run mode enabled. Email preview verified without dispatch.")
         return email_body
+
+    if not active_mailbox:
+        print("[!] FATAL: Sender mailbox is unresolved. Cannot dispatch live email.")
+        print("[!] Ensure --mailbox is provided, MERMAIL_MAILBOX_ID is set, or active mailbox is provisioned via list_mailboxes.")
+        return None
 
     print("[*] Submitting to live Mermail MCP gateway (send_email)...")
     res = query_live_mermail_mcp("send_email", {
@@ -534,7 +564,7 @@ def action_demo(target_dir: str, deal_id: str, escrow_address: str = None, amoun
         return
 
     print("\n>>> STEP 3: COMPILE TAMPER-EVIDENT MILESTONE MANIFEST")
-    manifest = action_deliver(target_dir, deal_id, wallet=resolved_w)
+    manifest = action_deliver(target_dir, deal_id, wallet=resolved_w, mailbox=active_mb)
 
     print("\n>>> STEP 4: DISPATCH MERMAIL DELIVERY NOTICE (PREVIEW/DRY-RUN)")
     action_dispatch_email(deal_id, "bounties@superteam.fun", target_dir, wallet=resolved_w, mailbox=active_mb, dry_run=True)
@@ -571,7 +601,7 @@ if __name__ == "__main__":
         effective_chain = args.chain or ("base" if args.escrow_address.startswith("0x") else "solana")
         action_verify_escrow(args.escrow_address, args.amount, chain=effective_chain)
     elif args.action == "deliver":
-        action_deliver(args.target_dir, args.deal_id, wallet=args.wallet)
+        action_deliver(args.target_dir, args.deal_id, wallet=args.wallet, mailbox=active_mailbox)
     elif args.action == "dispatch":
         action_dispatch_email(args.deal_id, args.recipient, args.target_dir, wallet=args.wallet, mailbox=active_mailbox, dry_run=args.dry_run)
     elif args.action == "demo":
