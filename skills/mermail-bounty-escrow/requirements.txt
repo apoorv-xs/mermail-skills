@@ -1,0 +1,2 @@
+# Optional FastMCP sidecar dependencies
+mcp>=1.0.0

@@ -216,11 +216,12 @@ def mermail_verify_escrow(escrow_address: str, expected_amount: float, chain: st
                         "action": "PROCEED_WITH_EXECUTION"
                     }, indent=2)
 
-        # 3. Check native SOL balance
+        # 3. Check native SOL balance against USD equivalent (zero dust approvals)
+        min_sol_required = expected_amount / 150.0  # Conservative $150/SOL benchmark
         bal_res = _query_solana_rpc("getBalance", [escrow_address])
         if "result" in bal_res and "value" in bal_res["result"]:
             sol_bal = bal_res["result"]["value"] / 1e9
-            if sol_bal > 0:
+            if sol_bal >= min_sol_required:
                 return json.dumps({
                     "escrow_address": escrow_address,
                     "chain": "solana",

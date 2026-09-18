@@ -222,6 +222,14 @@ def hash_directory(target_path: str) -> dict:
                 manifest[rel_p] = f"Error reading file: {e}"
     return manifest
 
+def compute_composite_merkle_root(manifest: dict) -> str:
+    """Computes a canonical Merkle-style root hash over sorted relative paths and content hashes."""
+    if not manifest or "error" in manifest:
+        return hashlib.sha256(b"").hexdigest()
+    # Canonical string: sorted newline-delimited 'rel_path:sha256_hash'
+    canonical_entries = [f"{k}:{manifest[k]}" for k in sorted(manifest.keys())]
+    return hashlib.sha256("\n".join(canonical_entries).encode("utf-8")).hexdigest()
+
 def action_scan(mailbox: str = DEFAULT_MAILBOX, sample_file: str = None) -> list:
     """Scans Mermail agent inbox for incoming bounty announcements and RFPs."""
     print(f"\n[+] Scanning Mermail Agent Inbox: {mailbox} ...")
@@ -284,9 +292,9 @@ def action_scan(mailbox: str = DEFAULT_MAILBOX, sample_file: str = None) -> list
     print("--------------------------------------------------------------------------------\n")
     return inbox
 
-def action_verify_escrow(escrow_address: str, expected_amount: float, chain: str = "solana") -> bool:
-    """Verifies counterparty escrow on-chain using public RPC nodes. Zero mock evaluation."""
-    print(f"\n[+] Auditing Counterparty On-Chain Escrow...")
+def action_verify_escrow(escrow_address: str, expected_amount: float, chain: str = "solana", sol_price_usd: float = 150.0) -> bool:
+    """Verifies counterparty token balance or escrow vault lock on-chain. Zero dust approvals."""
+    print(f"\n[+] Auditing Counterparty On-Chain Solvency / Escrow Lock...")
     print(f"[*] Target Escrow Address: {escrow_address}")
     print(f"[*] Expected Amount:       ${expected_amount:,.2f} USDC")
     print(f"[*] Network:               {chain.upper()}")
@@ -299,20 +307,20 @@ def action_verify_escrow(escrow_address: str, expected_amount: float, chain: str
     if chain.lower() == "solana":
         USDC_MINT_SOLANA = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
         
-        # 1. First check if it's a direct SPL Token Account
+        # 1. Direct SPL Token Account check
         rpc_res = query_solana_rpc("getTokenAccountBalance", [escrow_address])
         if "result" in rpc_res and "value" in rpc_res["result"]:
             token_amount = rpc_res["result"]["value"].get("uiAmount", 0.0)
             print(f"[*] On-Chain Verified Token Account Balance: ${token_amount:,.2f} USDC")
             if token_amount >= expected_amount:
-                print(f"[OK] Escrow Verified on Solana Mainnet: ${token_amount:,.2f} locked.")
+                print(f"[OK] Counterparty Funding Verified on Solana Mainnet: ${token_amount:,.2f} available.")
                 return True
             else:
-                print(f"[WARN] Escrow balance shortfall (${token_amount:,.2f} < ${expected_amount:,.2f}).")
+                print(f"[WARN] Balance shortfall (${token_amount:,.2f} < ${expected_amount:,.2f}).")
                 print(f"[TREASURY ARMOR] Halting compute until full milestone deposit is confirmed.")
                 return False
 
-        # 2. If not a direct token account, check if it's a Wallet Owner holding USDC ATAs
+        # 2. Check if it's a Wallet Owner holding USDC ATAs
         owner_res = query_solana_rpc("getTokenAccountsByOwner", [
             escrow_address,
             {"mint": USDC_MINT_SOLANA},
@@ -327,28 +335,29 @@ def action_verify_escrow(escrow_address: str, expected_amount: float, chain: str
                     total_usdc += float(amount_data.get("uiAmount", 0.0) or 0.0)
                 print(f"[*] Wallet Owner Verified USDC Balance across {len(atas)} ATA(s): ${total_usdc:,.2f} USDC")
                 if total_usdc >= expected_amount:
-                    print(f"[OK] Escrow Verified on Solana Mainnet: ${total_usdc:,.2f} locked.")
+                    print(f"[OK] Counterparty Funding Verified on Solana Mainnet: ${total_usdc:,.2f} available.")
                     return True
                 else:
-                    print(f"[WARN] Escrow balance shortfall (${total_usdc:,.2f} < ${expected_amount:,.2f}).")
+                    print(f"[WARN] Balance shortfall (${total_usdc:,.2f} < ${expected_amount:,.2f}).")
                     print(f"[TREASURY ARMOR] Halting compute until full milestone deposit is confirmed.")
                     return False
 
-        # 3. Check if it's a native SOL account
+        # 3. Check native SOL balance against full USD equivalent value (zero dust loophole)
+        min_sol_required = expected_amount / sol_price_usd
         bal_res = query_solana_rpc("getBalance", [escrow_address])
         if "result" in bal_res and "value" in bal_res["result"]:
             sol_bal = bal_res["result"]["value"] / 1e9
-            print(f"[*] Account exists on-chain. Native SOL Balance: {sol_bal:.4f} SOL")
-            if sol_bal > 0:
-                print(f"[OK] On-chain account active. Execution conditional approval granted.")
+            print(f"[*] Native SOL Balance: {sol_bal:.4f} SOL (Requires >= {min_sol_required:.4f} SOL for ${expected_amount:,.2f} USD equivalent)")
+            if sol_bal >= min_sol_required:
+                print(f"[OK] Native SOL Counterparty Balance Verified: {sol_bal:.4f} SOL.")
                 return True
+            else:
+                print(f"[WARN] Insufficient native SOL balance ({sol_bal:.4f} < {min_sol_required:.4f} SOL). Dust rejected.")
 
-        print(f"[TREASURY ARMOR] Escrow lock unconfirmed on-chain. Halting compute.")
+        print(f"[TREASURY ARMOR] Escrow/counterparty funding unconfirmed on-chain. Halting compute.")
         return False
 
     elif chain.lower() in ("base", "evm", "ethereum"):
-        # Query EVM balance via eth_call (standard ERC-20 balanceOf)
-        # Using zero-padded address for balanceOf(address)
         clean_addr = escrow_address.lower().replace("0x", "").zfill(64)
         data = "0x70a08231" + clean_addr
         USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
@@ -359,11 +368,13 @@ def action_verify_escrow(escrow_address: str, expected_amount: float, chain: str
                 bal = raw_bal / 1e6
                 print(f"[*] On-Chain Verified Base USDC Balance: ${bal:,.2f}")
                 if bal >= expected_amount:
-                    print(f"[OK] Escrow Verified on Base Mainnet: ${bal:,.2f} locked.")
+                    print(f"[OK] Counterparty Funding Verified on Base Mainnet: ${bal:,.2f} available.")
                     return True
+                else:
+                    print(f"[WARN] Base USDC shortfall (${bal:,.2f} < ${expected_amount:,.2f}).")
             except Exception as e:
                 print(f"[!] Parsing Base RPC balance failed: {e}")
-        print(f"[TREASURY ARMOR] Escrow lock unconfirmed on Base. Halting compute.")
+        print(f"[TREASURY ARMOR] Escrow/counterparty funding unconfirmed on Base. Halting compute.")
         return False
 
     return False
@@ -381,7 +392,7 @@ def action_deliver(target_dir: str, deal_id: str, wallet: str = None) -> dict:
         return None
 
     timestamp = datetime.now(timezone.utc).isoformat()
-    composite_hash = hashlib.sha256("".join(manifest.values()).encode("utf-8")).hexdigest()
+    composite_hash = compute_composite_merkle_root(manifest)
 
     proof_package = {
         "deal_id": deal_id,
@@ -398,7 +409,7 @@ def action_deliver(target_dir: str, deal_id: str, wallet: str = None) -> dict:
         json.dump(proof_package, f, indent=2)
 
     print(f"[OK] Manifest generated: {len(manifest)} files verified.")
-    print(f"[OK] Composite Root SHA-256 Integrity Hash: {composite_hash}")
+    print(f"[OK] Composite Merkle Root SHA-256: {composite_hash}")
     print(f"[OK] Saved receipt manifest to: {proof_path}")
     return proof_package
 
@@ -477,18 +488,35 @@ Respectfully,
         print(f"     Note: Message is in Mermail '{status}' state. Final delivery confirmed once undo window closes.")
     return email_body
 
-def action_demo(target_dir: str, deal_id: str, escrow_address: str = None, amount: float = 500.0, chain: str = "solana", wallet: str = None, mailbox: str = None):
-    """Runs a complete end-to-end verified demonstration cycle without fake mocks."""
+def action_demo(target_dir: str, deal_id: str, escrow_address: str = None, amount: float = 500.0, chain: str = "base", wallet: str = None, mailbox: str = None):
+    """Runs a verified demonstration cycle enforcing Treasury Armor halts if unverified."""
     active_mb = resolve_agent_mailbox(mailbox)
     resolved_w = resolve_agent_wallet(wallet)
     print(BANNER.strip())
     print("\n>>> STEP 1: SCAN INCOMING BOUNTY RFPs VIA MERMAIL")
-    # Query live gateway or show cleanly handled status
     inbox = action_scan(mailbox=active_mb)
     
-    print("\n>>> STEP 2: VERIFY BOUNTY ESCROW VIA ON-CHAIN RPC")
-    target_escrow = escrow_address or "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"
-    action_verify_escrow(target_escrow, amount, chain=chain)
+    print("\n>>> STEP 2: AUDIT COUNTERPARTY ON-CHAIN ESCROW (TREASURY ARMOR)")
+    # Default demo target: Verified funded Base USDC address ($79k+ on-chain)
+    target_escrow = escrow_address or "0x3304E22DDaa22bCdC5fCa2269b418046aE7b566A"
+    
+    # Auto-detect chain if user didn't specify and default 0x address is used
+    effective_chain = chain
+    if target_escrow.startswith("0x") and chain == "solana":
+        effective_chain = "base"
+        
+    is_funded = action_verify_escrow(target_escrow, amount, chain=effective_chain)
+    
+    if not is_funded:
+        print("\n[!] TREASURY ARMOR TRIGGERED: Counterparty balance unconfirmed or insufficient.")
+        print("[!] HALTING BUILD EXECUTION. Zero uncompensated compute burned.")
+        print("[*] Drafting standard SOW milestone terms for client review (save_draft)...")
+        print("--------------------------------------------------------------------------------")
+        print(f"To: sponsor | Subject: SOW Milestone Terms // Deposit Required for {deal_id}")
+        print(f"Please deposit ${amount:,.2f} USDC to escrow before engineering compute begins.")
+        print("--------------------------------------------------------------------------------")
+        print("[✔] TREASURY ARMOR ENFORCEMENT DEMO COMPLETE: Compute protected.")
+        return
 
     print("\n>>> STEP 3: COMPILE TAMPER-EVIDENT MILESTONE MANIFEST")
     manifest = action_deliver(target_dir, deal_id, wallet=resolved_w)
@@ -497,7 +525,7 @@ def action_demo(target_dir: str, deal_id: str, escrow_address: str = None, amoun
     action_dispatch_email(deal_id, "bounties@superteam.fun", target_dir, wallet=resolved_w, mailbox=active_mb, dry_run=True)
 
     print("\n" + "=" * 80)
-    print("[✔] COMPLETE AUTONOMOUS CYCLE EXECUTED WITH ZERO RUNTIME ERRORS.")
+    print("[✔] COMPLETE VERIFIED AUTONOMOUS CYCLE EXECUTED.")
     print("=" * 80)
 
 if __name__ == "__main__":

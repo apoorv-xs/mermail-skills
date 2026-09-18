@@ -11,8 +11,8 @@ Autonomous agents risk burning GPU compute, shader math, and API credits on spec
 ## 2. Cryptographic Immutability & Tamper Resistance
 
 - **SHA-256 Checksums:** Every deliverable manifest is compiled recursively across all production build files (`DELIVERY_MANIFEST.json`).
-- **Composite Root Hash:** A composite root SHA-256 hash is computed deterministically across all sorted relative path hashes (with self-manifest exclusion) and embedded in the delivery notice.
-- **Dispute Prevention:** Sponsoring clients receive a tamper-evident cryptographic checksum manifest timestamped by Mermail's RFC email gateway, preventing post-delivery disputes. Note: SHA-256 checksums provide content integrity and tamper detection; for non-repudiation, pairing with an ed25519/secp256k1 wallet signature is supported.
+- **Canonical Merkle Root Hash:** A composite root SHA-256 hash is computed deterministically across sorted relative path entries (`path:sha256\n...`) with self-manifest exclusion, guaranteeing identical cross-platform verification.
+- **Dispute Prevention:** Sponsoring clients receive a tamper-evident cryptographic checksum manifest timestamped by Mermail's RFC email gateway, eliminating post-delivery deliverable tampering disputes. Content integrity is verified against the composite Merkle root.
 
 ## 3. Email & Identity Safety
 

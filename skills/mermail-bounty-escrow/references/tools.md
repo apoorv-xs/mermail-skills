@@ -31,27 +31,26 @@ Pass structured arguments as **native JSON objects**. Never stringify `query` or
 ### `list_emails`
 ```json
 {
-  "mailboxId": "e2e20080-a406-478b-a2e5-28f9b2d6bf17"
+  "mailboxId": "<mailbox-public-id>"
 }
 ```
 
 ### `get_agent_wallet`
+Queries active agent wallet balances and portfolio allocations across supported chains:
 ```json
-{
-  "mailboxId": "e2e20080-a406-478b-a2e5-28f9b2d6bf17"
-}
+{}
 ```
 
 ### `send_email`
 Queues RFC delivery receipts via Mermail gateway:
 ```json
 {
-  "mailboxId": "e2e20080-a406-478b-a2e5-28f9b2d6bf17",
+  "mailboxId": "<mailbox-public-id>",
   "body": {
     "from": "agent@mermail.me",
     "to": "bounties@superteam.fun",
     "subject": "MILESTONE DELIVERED // SUPERTEAM-500",
-    "text": "Dear Sponsor,\n\nMilestone delivery has been sealed with Root SHA-256: 12576321...\nPlease release the escrow balance to 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU."
+    "text": "Dear Sponsor,\n\nMilestone delivery has been sealed with Root SHA-256: 12576321...\nPlease release the milestone balance to the configured settlement wallet."
   }
 }
 ```
