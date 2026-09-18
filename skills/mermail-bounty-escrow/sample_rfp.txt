@@ -5,7 +5,7 @@ Date: Fri, 18 Sep 2026 00:00:00 +0000
 Dear Engineer,
 
 Congratulations! Your proposal for "Build and Demo a Mermail Agent Skill" has been accepted.
-Milestone Reward: .00 USDC
+Milestone Reward: $500.00 USDC
 Escrow Deposit Status: Confirmed locked on-chain.
 Solana Escrow Account: 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
 

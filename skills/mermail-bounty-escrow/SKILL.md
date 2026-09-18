@@ -25,7 +25,7 @@ Read [tools.md](references/tools.md) for the official Mermail tool contracts and
 
 - An authenticated mailbox selection grounded in `list_mailboxes` with stable `public_id`.
 - A verified inbound RFP brief with parsed reward amount, token, sponsor email, and escrow contract address.
-- An on-chain escrow verification audit (`action_verify_escrow`) querying public RPCs (`getTokenAccountBalance` / `eth_call`) confirming locked funds prior to compute execution.
+- An on-chain escrow verification audit (`action_verify_escrow`) querying public RPCs (`getAccountInfo` / `getTokenAccountsByOwner` / `eth_call`) confirming counterparty solvency and deposit prior to compute execution.
 - If unfunded: an automated Treasury Armor halt and standard 50% upfront milestone SOW terms notice drafted via `save_draft` or queued via `send_email`.
 - If funded: a tamper-evident deliverable manifest (`DELIVERY_MANIFEST.json`) with composite root SHA-256 checksum.
 - An RFC delivery email preview and delivery confirmation dispatched via `send_email` (reporting accurate `status: queued`).

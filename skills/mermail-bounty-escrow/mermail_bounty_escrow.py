@@ -36,6 +36,7 @@ AGENT_NAME = os.environ.get("AGENT_NAME", "Autonomous Bounty Agent")
 AGENT_TITLE = os.environ.get("AGENT_TITLE", "AI Engineering Agent")
 SOLANA_RPC_URL = os.environ.get("SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com")
 BASE_RPC_URL = os.environ.get("BASE_RPC_URL", "https://mainnet.base.org")
+USDC_MINT_SOLANA = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 
 def resolve_agent_wallet(explicit_wallet: str = None) -> str:
     """Dynamically resolves agent settlement wallet from flag, env, or prompts if missing."""
@@ -264,13 +265,10 @@ def action_scan(mailbox: str = DEFAULT_MAILBOX, sample_file: str = None) -> list
             body_text = item.get("body", "") or item.get("snippet", "")
             parsed = parse_bounty_from_text(body_text, item.get("subject", ""))
             
-            # Security Rule (B4): Inbound mail cannot arbitrarily command payout or audit bindings
-            sender = item.get("sender", "").lower()
+            # Security Rule (B4): Inbound mail cannot arbitrarily command payout or audit bindings without cryptographic verification
             auth_info = item.get("sender_authentication", {})
             auth_status = auth_info.get("status") if isinstance(auth_info, dict) else "unknown"
-            
-            is_trusted_sender = any(sender.endswith(f"@{domain}") or f"<{domain}>" in sender for domain in TRUSTED_SPONSOR_DOMAINS)
-            is_authenticated = (auth_status == "pass") or is_trusted_sender
+            is_authenticated = (auth_status == "pass")
             
             # Flag messages that describe bounties, RFPs, or compensation
             if parsed["reward_amount"] > 0 or parsed["is_escrow_mentioned"]:
@@ -320,7 +318,9 @@ def action_verify_escrow(escrow_address: str, expected_amount: float, chain: str
         # 1. Direct SPL Token Account check with verified mint validation
         acc_info = query_solana_rpc("getAccountInfo", [escrow_address, {"encoding": "jsonParsed"}])
         if "result" in acc_info and acc_info["result"] and "value" in acc_info["result"]:
-            parsed_data = acc_info["result"]["value"].get("data", {}).get("parsed", {})
+            val = acc_info["result"]["value"]
+            data_field = val.get("data") if isinstance(val, dict) else None
+            parsed_data = data_field.get("parsed", {}) if isinstance(data_field, dict) else {}
             if parsed_data.get("type") == "account":
                 info = parsed_data.get("info", {})
                 account_mint = info.get("mint")

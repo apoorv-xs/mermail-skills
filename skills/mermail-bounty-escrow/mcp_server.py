@@ -183,19 +183,25 @@ def mermail_verify_escrow(escrow_address: str, expected_amount: float, chain: st
 
     if chain.lower() == "solana":
         USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
-        # 1. Direct SPL Token Account check
-        token_res = _query_solana_rpc("getTokenAccountBalance", [escrow_address])
-        if "result" in token_res and "value" in token_res["result"]:
-            val = token_res["result"]["value"]
-            ui_amount = val.get("uiAmount", 0.0)
-            if ui_amount >= expected_amount:
-                return json.dumps({
-                    "escrow_address": escrow_address,
-                    "chain": "solana",
-                    "verified": True,
-                    "locked_usdc_balance": ui_amount,
-                    "action": "PROCEED_WITH_EXECUTION"
-                }, indent=2)
+        # 1. Direct SPL Token Account check with verified mint validation
+        acc_info = _query_solana_rpc("getAccountInfo", [escrow_address, {"encoding": "jsonParsed"}])
+        if "result" in acc_info and acc_info["result"] and "value" in acc_info["result"]:
+            val = acc_info["result"]["value"]
+            data_field = val.get("data") if isinstance(val, dict) else None
+            parsed_data = data_field.get("parsed", {}) if isinstance(data_field, dict) else {}
+            if parsed_data.get("type") == "account":
+                info = parsed_data.get("info", {})
+                account_mint = info.get("mint")
+                if account_mint == USDC_MINT:
+                    token_amount = float(info.get("tokenAmount", {}).get("uiAmount", 0.0) or 0.0)
+                    if token_amount >= expected_amount:
+                        return json.dumps({
+                            "escrow_address": escrow_address,
+                            "chain": "solana",
+                            "verified": True,
+                            "locked_usdc_balance": token_amount,
+                            "action": "PROCEED_WITH_EXECUTION"
+                        }, indent=2)
 
         # 2. Check if it's a Wallet Owner address holding USDC ATA(s)
         owner_res = _query_solana_rpc("getTokenAccountsByOwner", [

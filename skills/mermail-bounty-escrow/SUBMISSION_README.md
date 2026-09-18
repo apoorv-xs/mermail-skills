@@ -190,7 +190,7 @@ python mermail_bounty_escrow.py --action dispatch --deal-id SUPERTEAM-MERMAIL-SK
 - **Target Repository:** [Nudgen-Marketing/mermail-skills](https://github.com/Nudgen-Marketing/mermail-skills)
 - **AI Client Used:** Gemini Pro / Antigravity Agent Runtime + FastMCP
 - **Demo Command:** `python mermail_bounty_escrow.py --action demo --target-dir .`
-- **Verification Hash:** [`DELIVERY_MANIFEST.json`](DELIVERY_MANIFEST.json) (Composite Merkle Root: `916db7d1108b6b57f4223110d25482829dc4cd0ddc203adabc8a0ea712940f3e`)
+- **Verification Hash:** [`DELIVERY_MANIFEST.json`](DELIVERY_MANIFEST.json) (Composite Merkle Root: `81fd21e25547c76be2ebb9d0e82d2e6503d11b800c14f1d334e71b89de4eb64f`)
 - **Creator / Architect:** Apoorv A S ([@apoorv_xs](https://x.com/apoorv_xs))
 - **Settlement Wallet:** Dynamic (Configured via `--wallet` or `AGENT_WALLET_ADDRESS`)
 
